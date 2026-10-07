@@ -1,0 +1,12 @@
+### GET request to example server
+POST http://localhost:8080/api/resources
+Content-Type: application/json
+
+{
+  "name": "Meeting Room A",
+  "description": "Ground floor meeting room",
+  "location": "Floor 1",
+  "type": "ROOM"
+}
+
+###
