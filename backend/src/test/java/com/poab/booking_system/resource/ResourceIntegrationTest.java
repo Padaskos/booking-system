@@ -115,6 +115,15 @@ class ResourceIntegrationTest {
     }
 
     @Test
+    void getResources_shouldFilterByLocation() throws Exception {
+        mockMvc.perform(get("/api/resources")
+                        .param("location","gent"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
     void getResources_shouldFilterByNameAndType_combined() throws Exception {
         mockMvc.perform(get("/api/resources")
                         .param("name", "Camera")

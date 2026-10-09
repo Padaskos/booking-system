@@ -21,25 +21,24 @@ public class ResourceService {
     }
 
     @Transactional
-    protected void createResource(CreateResourceRequest request) {
+    public void createResource(CreateResourceRequest request) {
         ResourceEntity entity = new ResourceEntity(request.name(), request.description(), request.location(), request.type());
         repository.save(entity);
     }
 
-    protected ResponseEntity<Page<ResourceResponse>> getResources(Pageable pageable, ResourceType type, String name, String location) {
+    public Page<ResourceResponse> getResources(Pageable pageable, ResourceType type, String name, String location) {
         Specification<ResourceEntity> spec = Specification
                 .where(ResourceSpecifications.isActive())
                 .and(ResourceSpecifications.nameLike(name))
-                .and(ResourceSpecifications.hasType(type));
+                .and(ResourceSpecifications.hasType(type))
+                .and(ResourceSpecifications.locationLike(location));
 
-        Page<ResourceResponse> result = repository.findAll(spec, pageable)
+        return repository.findAll(spec, pageable)
                 .map(entity -> new ResourceResponse(
                         entity.getName(),
                         entity.getDescription(),
                         entity.getLocation(),
                         entity.getType()
                 ));
-
-        return ResponseEntity.ok(result);
     }
 }

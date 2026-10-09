@@ -6,12 +6,9 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api")
@@ -43,6 +40,6 @@ public class ResourceController {
             throw new InvalidRequestException("Page must be >= 0 and size must be between 1 and 100");
         }
         Pageable pageable = PageRequest.of(page, size);
-        return resourceService.getResources(pageable, type, name, location);
+        return ResponseEntity.ok(resourceService.getResources(pageable, type, name, location));
     }
 }
