@@ -9,4 +9,13 @@ Content-Type: application/json
   "type": "ROOM"
 }
 
-###
+### PUT request
+PUT http://localhost:8080/api/resources/83d81226-3df9-40cd-aee6-80542c66c1c2
+Content-Type: application/json
+
+{
+  "name": "Changed Room A",
+  "description": "Moved to top floor",
+  "location": "Floor 9",
+  "type": "ROOM"
+}
