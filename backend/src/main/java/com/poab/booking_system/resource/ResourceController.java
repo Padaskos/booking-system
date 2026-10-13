@@ -4,16 +4,18 @@ import com.poab.booking_system.resource.dto.CreateResourceRequest;
 import com.poab.booking_system.resource.dto.ResourceResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api")
 public class ResourceController {
 
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of("name", "location", "type");
     private final ResourceService resourceService;
 
     ResourceController(
@@ -29,17 +31,38 @@ public class ResourceController {
     }
 
     @GetMapping("/resources")
-    public ResponseEntity<Page<ResourceResponse>> getResources(
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "20") int size,
+    public Page<ResourceResponse> getResources(
+        @PageableDefault(size = 20) Pageable pageable,
         @RequestParam(required = false) ResourceType type,
         @RequestParam(required = false) String name,
-        @RequestParam(required = false) String location
+        @RequestParam(required = false) String location,
+        @RequestParam(required = false) Integer page
     ) {
-        if (page < 0 || size < 1 || size > 100) {
-            throw new InvalidRequestException("Page must be >= 0 and size must be between 1 and 100");
+        validatePageable(pageable, page);
+        return resourceService.getResources(pageable, type, name, location)
+                .map(entity -> new ResourceResponse(
+                        entity.getName(),
+                        entity.getDescription(),
+                        entity.getLocation(),
+                        entity.getType()
+                ));
+    }
+
+    private static void validatePageable(Pageable pageable, Integer page) {
+        if (page != null && page < 0) {
+            throw new InvalidRequestException("Page must be at least 0");
         }
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(resourceService.getResources(pageable, type, name, location));
+
+        if (pageable.getPageSize() > 100) {
+            throw new InvalidRequestException("Size cannot exceed 100");
+        }
+
+        pageable.getSort().forEach(order -> {
+            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
+                throw new InvalidRequestException(
+                        "Invalid sort field: " + order.getProperty()
+                );
+            }
+        });
     }
 }

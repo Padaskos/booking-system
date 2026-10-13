@@ -1,6 +1,5 @@
 package com.poab.booking_system.resource;
 
-import com.poab.booking_system.resource.dto.ResourceResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,10 +30,6 @@ class ResourceServiceUnitTest {
         return new ResourceEntity(name, description, location, type);
     }
 
-    private Pageable pageable(int page, int size) {
-        return PageRequest.of(page, size);
-    }
-
     @Test
     void getResources_shouldReturnAllResults_whenNoFiltersApplied() {
         List<ResourceEntity> entities = List.of(
@@ -44,7 +39,7 @@ class ResourceServiceUnitTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(entities));
 
-        Page<ResourceResponse> result = resourceService.getResources(pageable(0, 20), null, null, null);
+        Page<ResourceEntity> result = resourceService.getResources(PageRequest.of(0, 20), null, null, null);
 
         assertThat(result.getTotalElements()).isEqualTo(2);
     }
@@ -57,10 +52,10 @@ class ResourceServiceUnitTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(entities));
 
-        Page<ResourceResponse> result = resourceService.getResources(pageable(0, 20), ResourceType.LAPTOP, null, null);
+        Page<ResourceEntity> result = resourceService.getResources(PageRequest.of(0, 20), ResourceType.LAPTOP, null, null);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent().get(0).type()).isEqualTo(ResourceType.LAPTOP);
+        assertThat(result.getContent().get(0).getType()).isEqualTo(ResourceType.LAPTOP);
     }
 
     @Test
@@ -71,10 +66,10 @@ class ResourceServiceUnitTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(entities));
 
-        Page<ResourceResponse> result = resourceService.getResources(pageable(0, 20), null, "laptop", null);
+        Page<ResourceEntity> result = resourceService.getResources(PageRequest.of(0, 20), null, "laptop", null);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent().get(0).name()).isEqualTo("Laptop A");
+        assertThat(result.getContent().get(0).getName()).isEqualTo("Laptop A");
     }
 
     @Test
@@ -85,10 +80,10 @@ class ResourceServiceUnitTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(entities));
 
-        Page<ResourceResponse> result = resourceService.getResources(pageable(0, 20), null, null, "gent");
+        Page<ResourceEntity> result = resourceService.getResources(PageRequest.of(0, 20), null, null, "gent");
 
         assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent().get(0).location()).isEqualTo("Gent");
+        assertThat(result.getContent().get(0).getLocation()).isEqualTo("Gent");
     }
 
     @Test
@@ -96,7 +91,7 @@ class ResourceServiceUnitTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        Page<ResourceResponse> result = resourceService.getResources(pageable(0, 20), null, "nonexistent", null);
+        Page<ResourceEntity> result = resourceService.getResources(PageRequest.of(0, 20), null, "nonexistent", null);
 
         assertThat(result.getTotalElements()).isEqualTo(0);
         assertThat(result.getContent()).isEmpty();
@@ -110,13 +105,13 @@ class ResourceServiceUnitTest {
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(entities));
 
-        Page<ResourceResponse> result = resourceService.getResources(pageable(0, 20), null, null, null);
+        Page<ResourceEntity> result = resourceService.getResources(PageRequest.of(0, 20), null, null, null);
 
-        ResourceResponse response = result.getContent().get(0);
-        assertThat(response.name()).isEqualTo("Laptop A");
-        assertThat(response.description()).isEqualTo("A laptop");
-        assertThat(response.location()).isEqualTo("Antwerpen");
-        assertThat(response.type()).isEqualTo(ResourceType.LAPTOP);
+        ResourceEntity response = result.getContent().get(0);
+        assertThat(response.getName()).isEqualTo("Laptop A");
+        assertThat(response.getDescription()).isEqualTo("A laptop");
+        assertThat(response.getLocation()).isEqualTo("Antwerpen");
+        assertThat(response.getType()).isEqualTo(ResourceType.LAPTOP);
     }
 
     @Test
@@ -125,11 +120,11 @@ class ResourceServiceUnitTest {
                 makeEntity("Laptop A", "desc", "Antwerpen", ResourceType.LAPTOP),
                 makeEntity("Laptop B", "desc", "Gent", ResourceType.LAPTOP)
         );
-        Pageable smallPage = pageable(0, 2);
+        Pageable smallPage = PageRequest.of(0, 2);
         when(repository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(entities, smallPage, 5));
 
-        Page<ResourceResponse> result = resourceService.getResources(smallPage, null, null, null);
+        Page<ResourceEntity> result = resourceService.getResources(smallPage, null, null, null);
 
         assertThat(result.getContent()).hasSize(2);
         assertThat(result.getTotalElements()).isEqualTo(5);
