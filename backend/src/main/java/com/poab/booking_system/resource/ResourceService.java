@@ -55,7 +55,7 @@ public class ResourceService {
     @Transactional
     DetailedResourceResponse updateResource(CreateResourceRequest request, UUID id) {
         ResourceEntity entity = repository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Resource id " + id + " is incorrect or resource does not exist"));
+                .orElseThrow(() -> new ResourceNotFoundException(id));
 
         entity.updateDetails(
                 request.name(),
