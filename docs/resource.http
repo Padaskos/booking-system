@@ -9,6 +9,9 @@ Content-Type: application/json
   "type": "ROOM"
 }
 
+###
+GET http://localhost:8080/api/resources?page=0&size=101
+
 ### PUT request
 PUT http://localhost:8080/api/resources/83d81226-3df9-40cd-aee6-80542c66c1c2
 Content-Type: application/json
