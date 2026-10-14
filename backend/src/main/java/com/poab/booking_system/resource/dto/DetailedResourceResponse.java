@@ -14,5 +14,4 @@ public record DetailedResourceResponse(
         boolean isActive,
         Instant creationTimestamp,
         Instant updatedTimestamp
-) {
-}
+    ) {}

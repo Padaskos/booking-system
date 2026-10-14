@@ -37,6 +37,21 @@ public class ResourceService {
         return repository.findAll(spec, pageable);
     }
 
+    public DetailedResourceResponse getResourceById(UUID id) {
+        return repository.findById(id)
+                .map(entity -> new DetailedResourceResponse(
+                        entity.getId(),
+                        entity.getName(),
+                        entity.getDescription(),
+                        entity.getLocation(),
+                        entity.getType(),
+                        entity.isActive(),
+                        entity.getCreationTimestamp(),
+                        entity.getUpdatedTimestamp()
+                ))
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+    }
+
     @Transactional
     DetailedResourceResponse updateResource(CreateResourceRequest request, UUID id) {
         ResourceEntity entity = repository.findById(id)

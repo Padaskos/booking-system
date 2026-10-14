@@ -44,6 +44,7 @@ public class ResourceController {
         validatePageable(pageable, page);
         return resourceService.getResources(pageable, type, name, location)
                 .map(entity -> new ResourceResponse(
+                        entity.getId(),
                         entity.getName(),
                         entity.getDescription(),
                         entity.getLocation(),
@@ -67,6 +68,11 @@ public class ResourceController {
                 );
             }
         });
+    }
+
+    @GetMapping("/resources/{id}")
+    public DetailedResourceResponse getsResourceById(@PathVariable UUID id) {
+        return resourceService.getResourceById(id);
     }
 
     @PutMapping("/resources/{id}")

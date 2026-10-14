@@ -2,6 +2,7 @@
 package com.poab.booking_system.resource;
 
 import com.poab.booking_system.resource.dto.CreateResourceRequest;
+import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import com.poab.booking_system.resource.dto.ResourceResponse;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -304,5 +306,86 @@ class ResourceIntegrationTest {
         mockMvc.perform(get("/api/resources")
                         .param("sort", "description,asc"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResourceById_shouldReturnResource_whenResourceExists()
+            throws Exception {
+
+        ResourceEntity saved = repository.saveAndFlush(
+                new ResourceEntity(
+                        "Projector",
+                        "Meeting projector",
+                        "Leuven",
+                        ResourceType.CAMERA
+                )
+        );
+
+        MvcResult result = mockMvc.perform(
+                        get("/api/resources/{id}", saved.getId())
+                )
+                .andExpect(status().isOk())
+                .andReturn();
+
+        DetailedResourceResponse response = objectMapper.readValue(
+                result.getResponse().getContentAsString(),
+                DetailedResourceResponse.class
+        );
+
+        assertThat(response.id()).isEqualTo(saved.getId());
+        assertThat(response.name()).isEqualTo("Projector");
+        assertThat(response.description()).isEqualTo("Meeting projector");
+        assertThat(response.location()).isEqualTo("Leuven");
+        assertThat(response.type()).isEqualTo(ResourceType.CAMERA);
+        assertThat(response.isActive()).isTrue();
+        assertThat(response.creationTimestamp()).isNotNull();
+        assertThat(response.updatedTimestamp()).isNotNull();
+    }
+
+    @Test
+    void getResourceById_shouldReturn404_whenResourceDoesNotExist()
+            throws Exception {
+
+        UUID unknownId = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/resources/{id}", unknownId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getResourceById_shouldReturn400_whenIdIsMalformed()
+            throws Exception {
+
+        mockMvc.perform(get("/api/resources/not-a-uuid"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResourceById_shouldReturnInactiveResource()
+            throws Exception {
+
+        ResourceEntity inactive = new ResourceEntity(
+                "Old Laptop",
+                "Inactive resource",
+                "Gent",
+                ResourceType.LAPTOP
+        );
+
+        inactive.setActive(false);
+        ResourceEntity saved = repository.saveAndFlush(inactive);
+
+        MvcResult result = mockMvc.perform(
+                        get("/api/resources/{id}", saved.getId())
+                )
+                .andExpect(status().isOk())
+                .andReturn();
+
+        DetailedResourceResponse response = objectMapper.readValue(
+                result.getResponse().getContentAsString(),
+                DetailedResourceResponse.class
+        );
+
+        assertThat(response.id()).isEqualTo(saved.getId());
+        assertThat(response.isActive()).isFalse();
     }
 }
