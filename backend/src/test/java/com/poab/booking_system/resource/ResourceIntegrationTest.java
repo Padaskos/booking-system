@@ -19,14 +19,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
-
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -387,5 +388,132 @@ class ResourceIntegrationTest {
 
         assertThat(response.id()).isEqualTo(saved.getId());
         assertThat(response.isActive()).isFalse();
+    }
+
+    @Test
+    void updateResource_shouldReturnUpdatedResource_whenRequestIsValid()
+            throws Exception {
+
+        ResourceEntity saved = repository.saveAndFlush(
+                new ResourceEntity(
+                        "Old name",
+                        "Old description",
+                        "Antwerpen",
+                        ResourceType.LAPTOP
+                )
+        );
+
+        UUID originalId = saved.getId();
+        Instant originalCreationTimestamp = saved.getCreationTimestamp();
+        Instant originalUpdateTimestamp = saved.getUpdatedTimestamp();
+
+        CreateResourceRequest request = new CreateResourceRequest(
+                "New name",
+                "New description",
+                "Gent",
+                ResourceType.CAMERA
+        );
+
+        MvcResult result = mockMvc.perform(
+                        put("/api/resources/{id}", saved.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isOk())
+                .andReturn();
+
+        DetailedResourceResponse response = objectMapper.readValue(
+                result.getResponse().getContentAsString(),
+                DetailedResourceResponse.class
+        );
+
+        assertThat(response.id()).isEqualTo(originalId);
+        assertThat(response.name()).isEqualTo("New name");
+        assertThat(response.description()).isEqualTo("New description");
+        assertThat(response.location()).isEqualTo("Gent");
+        assertThat(response.type()).isEqualTo(ResourceType.CAMERA);
+        assertThat(response.isActive()).isTrue();
+        assertThat(response.creationTimestamp())
+                .isEqualTo(originalCreationTimestamp);
+
+        repository.flush();
+
+        ResourceEntity updated = repository.findById(originalId).orElseThrow();
+
+        assertThat(updated.getUpdatedTimestamp())
+                .isAfterOrEqualTo(originalUpdateTimestamp);
+    }
+
+    @Test
+    void updateResource_shouldReturn404_whenResourceDoesNotExist()
+            throws Exception {
+
+        CreateResourceRequest request = new CreateResourceRequest(
+                "New name",
+                "Description",
+                "Gent",
+                ResourceType.ROOM
+        );
+
+        mockMvc.perform(
+                        put("/api/resources/{id}", UUID.randomUUID())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateResource_shouldReturn400_whenIdIsMalformed()
+            throws Exception {
+
+        CreateResourceRequest request = new CreateResourceRequest(
+                "New name",
+                "Description",
+                "Gent",
+                ResourceType.ROOM
+        );
+
+        mockMvc.perform(
+                        put("/api/resources/not-a-uuid")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateResource_shouldReturn400_andNotUpdate_whenRequestIsInvalid()
+            throws Exception {
+
+        ResourceEntity saved = repository.saveAndFlush(
+                new ResourceEntity(
+                        "Original name",
+                        "Original description",
+                        "Antwerpen",
+                        ResourceType.LAPTOP
+                )
+        );
+
+        CreateResourceRequest invalidRequest = new CreateResourceRequest(
+                " ",
+                "Changed description",
+                "Gent",
+                ResourceType.CAMERA
+        );
+
+        mockMvc.perform(
+                        put("/api/resources/{id}", saved.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(invalidRequest))
+                )
+                .andExpect(status().isBadRequest());
+
+        ResourceEntity unchanged = repository.findById(saved.getId()).orElseThrow();
+
+        assertThat(unchanged.getName()).isEqualTo("Original name");
+        assertThat(unchanged.getDescription()).isEqualTo("Original description");
+        assertThat(unchanged.getLocation()).isEqualTo("Antwerpen");
+        assertThat(unchanged.getType()).isEqualTo(ResourceType.LAPTOP);
     }
 }
