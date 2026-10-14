@@ -3,10 +3,11 @@ POST http://localhost:8080/api/resources
 Content-Type: application/json
 
 {
-  "name": "Meeting Room A",
-  "description": "Ground floor meeting room",
-  "location": "Floor 1",
+  "name": "Meeting Room B",
+  "description": "Large meeting room on 2nd floor",
+  "location": "Floor 2",
   "type": "ROOM"
 }
 
 ###
+GET http://localhost:8080/api/resources?page=0&size=101
