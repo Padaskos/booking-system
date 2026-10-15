@@ -6,7 +6,6 @@ import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import com.poab.booking_system.resource.dto.ResourceResponse;
 import com.poab.booking_system.resource.dto.UpdateStatusRequest;
 import jakarta.transaction.Transactional;
-import jakarta.validation.constraints.Null;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
