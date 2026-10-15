@@ -6,6 +6,7 @@ import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import com.poab.booking_system.resource.dto.ResourceResponse;
 import com.poab.booking_system.resource.dto.UpdateStatusRequest;
 import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.Null;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -416,5 +417,21 @@ class ResourceIntegrationTest {
         ResourceEntity saved = saveResource(true);
         patchStatus(saved.getId(), false);
         assertThat(repository.findById(saved.getId()).orElseThrow().isActive()).isFalse();
+    }
+
+    @Test
+    void updateResourceStatusById_idNotFound() throws Exception {
+        mockMvc.perform(patch("/api/resources/{id}/status", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(false))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateResourceStatusById_invalidRequest() throws Exception {
+        mockMvc.perform(patch("/api/resources/{id}/status", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(null))))
+                .andExpect(status().isBadRequest());
     }
 }
