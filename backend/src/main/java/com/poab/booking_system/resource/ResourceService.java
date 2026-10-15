@@ -51,4 +51,10 @@ public class ResourceService {
                 ))
                 .orElseThrow(() -> new ResourceNotFoundException(id));
     }
+
+    public void updateStatusById(UUID id, boolean status) {
+        ResourceEntity entity = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+        entity.setActive(status);
+    }
 }

@@ -3,6 +3,7 @@ package com.poab.booking_system.resource;
 import com.poab.booking_system.resource.dto.CreateResourceRequest;
 import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import com.poab.booking_system.resource.dto.ResourceResponse;
+import com.poab.booking_system.resource.dto.UpdateStatusRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -75,5 +76,8 @@ public class ResourceController {
         return resourceService.getResourceById(id);
     }
 
-
+    @PatchMapping("/resources/{id}/status")
+    public void updateResourceStatusById(@PathVariable UUID id, @Valid @RequestBody UpdateStatusRequest request) {
+        resourceService.updateStatusById(id, request.status());
+    }
 }
