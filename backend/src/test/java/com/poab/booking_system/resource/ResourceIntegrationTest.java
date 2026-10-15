@@ -4,6 +4,7 @@ package com.poab.booking_system.resource;
 import com.poab.booking_system.resource.dto.CreateResourceRequest;
 import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import com.poab.booking_system.resource.dto.ResourceResponse;
+import com.poab.booking_system.resource.dto.UpdateStatusRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import java.util.UUID;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -312,7 +314,7 @@ class ResourceIntegrationTest {
     void getResourceById_shouldReturnResource_whenResourceExists()
             throws Exception {
 
-        ResourceEntity saved = repository.saveAndFlush(
+        ResourceEntity entity = repository.saveAndFlush(
                 new ResourceEntity(
                         "Projector",
                         "Meeting projector",
@@ -322,7 +324,7 @@ class ResourceIntegrationTest {
         );
 
         MvcResult result = mockMvc.perform(
-                        get("/api/resources/{id}", saved.getId())
+                        get("/api/resources/{id}", entity.getId())
                 )
                 .andExpect(status().isOk())
                 .andReturn();
@@ -332,7 +334,7 @@ class ResourceIntegrationTest {
                 DetailedResourceResponse.class
         );
 
-        assertThat(response.id()).isEqualTo(saved.getId());
+        assertThat(response.id()).isEqualTo(entity.getId());
         assertThat(response.name()).isEqualTo("Projector");
         assertThat(response.description()).isEqualTo("Meeting projector");
         assertThat(response.location()).isEqualTo("Leuven");
@@ -364,15 +366,15 @@ class ResourceIntegrationTest {
     void getResourceById_shouldReturnInactiveResource()
             throws Exception {
 
-        ResourceEntity inactive = new ResourceEntity(
+        ResourceEntity entity = new ResourceEntity(
                 "Old Laptop",
                 "Inactive resource",
                 "Gent",
                 ResourceType.LAPTOP
         );
 
-        inactive.setActive(false);
-        ResourceEntity saved = repository.saveAndFlush(inactive);
+        entity.setActive(false);
+        ResourceEntity saved = repository.saveAndFlush(entity);
 
         MvcResult result = mockMvc.perform(
                         get("/api/resources/{id}", saved.getId())
@@ -387,5 +389,48 @@ class ResourceIntegrationTest {
 
         assertThat(response.id()).isEqualTo(saved.getId());
         assertThat(response.isActive()).isFalse();
+    }
+
+    private ResourceEntity saveResource(boolean active) {
+        ResourceEntity entity = new ResourceEntity("name", "description", "location", ResourceType.CAMERA);
+        entity.setActive(active);
+        return repository.saveAndFlush(entity);
+    }
+
+    private void patchStatus(UUID id, boolean status) throws Exception {
+        mockMvc.perform(patch("/api/resources/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(status))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void updateResourceStatusById_StatusToActive() throws Exception {
+        ResourceEntity saved = saveResource(false);
+        patchStatus(saved.getId(), true);
+        assertThat(repository.findById(saved.getId()).orElseThrow().isActive()).isTrue();
+    }
+
+    @Test
+    void updateResourceStatusById_StatusToInactive() throws Exception {
+        ResourceEntity saved = saveResource(true);
+        patchStatus(saved.getId(), false);
+        assertThat(repository.findById(saved.getId()).orElseThrow().isActive()).isFalse();
+    }
+
+    @Test
+    void updateResourceStatusById_idNotFound() throws Exception {
+        mockMvc.perform(patch("/api/resources/{id}/status", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(false))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateResourceStatusById_invalidRequest() throws Exception {
+        mockMvc.perform(patch("/api/resources/{id}/status", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(null))))
+                .andExpect(status().isBadRequest());
     }
 }
