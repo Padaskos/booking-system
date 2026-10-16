@@ -11,3 +11,13 @@ Content-Type: application/json
 
 ###
 GET http://localhost:8080/api/resources?page=0&size=101
+
+###
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Paris",
+  "email": "paris@poab.be",
+  "password": "SuperSecretPassword"
+}

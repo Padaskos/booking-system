@@ -1,6 +1,5 @@
 package com.poab.booking_system.user;
 
-import com.poab.booking_system.resource.dto.CreateResourceRequest;
 import com.poab.booking_system.user.dto.CreateUserRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

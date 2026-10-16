@@ -1,6 +1,7 @@
 package com.poab.booking_system;
 
 import com.poab.booking_system.resource.ResourceNotFoundException;
+import com.poab.booking_system.user.EmailAlreadyExistsConflict;
 import org.springframework.http.HttpStatus;
 import com.poab.booking_system.resource.InvalidRequestException;
 import org.springframework.http.ResponseEntity;
@@ -12,12 +13,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<String> handleResourceNotFound(ResourceNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
     }
 
     @ExceptionHandler(InvalidRequestException.class)
     public ResponseEntity<String> handleInvalidRequest(InvalidRequestException ex) {
         return ResponseEntity.badRequest().body(ex.getMessage());
+    }
+
+    @ExceptionHandler(EmailAlreadyExistsConflict.class)
+    public ResponseEntity<String> handleEmailAlreadyExistConflict(EmailAlreadyExistsConflict ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 }

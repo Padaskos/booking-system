@@ -18,10 +18,8 @@ public class UserService {
     }
 
     public void createUser(String name, String email, String password) {
-        repository.save(new UserEntity(
-                        name,
-                        email,
-                        passwordEncoder.encode(password)
-                ));
+        if (repository.existsByEmailIgnoreCase(email))
+            throw new EmailAlreadyExistsConflict(email);
+        repository.save(new UserEntity(name, email, passwordEncoder.encode(password)));
     }
 }
