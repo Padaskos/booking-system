@@ -99,4 +99,10 @@ public class ResourceEntity {
         isActive = active;
     }
 
+    public void updateDetails(String name, String description, String location, ResourceType type) {
+        this.name = name;
+        this.description = description;
+        this.location = location;
+        this.type = type;
+    }
 }
