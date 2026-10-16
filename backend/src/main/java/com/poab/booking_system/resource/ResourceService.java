@@ -1,7 +1,6 @@
 package com.poab.booking_system.resource;
 
 import com.poab.booking_system.resource.dto.CreateResourceRequest;
-import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,23 +36,13 @@ public class ResourceService {
         return repository.findAll(spec, pageable);
     }
 
-    public DetailedResourceResponse getResourceById(UUID id) {
+    public ResourceEntity getResourceById(UUID id) {
         return repository.findById(id)
-                .map(entity -> new DetailedResourceResponse(
-                        entity.getId(),
-                        entity.getName(),
-                        entity.getDescription(),
-                        entity.getLocation(),
-                        entity.getType(),
-                        entity.isActive(),
-                        entity.getCreationTimestamp(),
-                        entity.getUpdatedTimestamp()
-                ))
                 .orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
     @Transactional
-    DetailedResourceResponse updateResource(CreateResourceRequest request, UUID id) {
+    ResourceEntity updateResource(CreateResourceRequest request, UUID id) {
         ResourceEntity entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
 
@@ -64,16 +53,6 @@ public class ResourceService {
                 request.type()
         );
         repository.saveAndFlush(entity);
-
-        return new DetailedResourceResponse(
-                entity.getId(),
-                entity.getName(),
-                entity.getDescription(),
-                entity.getLocation(),
-                entity.getType(),
-                entity.isActive(),
-                entity.getCreationTimestamp(),
-                entity.getUpdatedTimestamp()
-        );
+        return entity;
     }
 }
