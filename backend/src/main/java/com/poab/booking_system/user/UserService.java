@@ -1,25 +1,28 @@
 package com.poab.booking_system.user;
 
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class UserService {
 
     private final UserRepository repository;
-    private final BCryptPasswordEncoder passwordEncoder;
+    private final PasswordHasher passwordHasher;
 
     UserService (
         UserRepository repository,
-        BCryptPasswordEncoder passwordEncoder
+        PasswordHasher passwordHasher
     ) {
         this.repository = repository;
-        this.passwordEncoder = passwordEncoder;
+        this.passwordHasher = passwordHasher;
     }
 
     public void createUser(String name, String email, String password) {
         if (repository.existsByEmailIgnoreCase(email))
             throw new EmailAlreadyExistsConflict(email);
-        repository.save(new UserEntity(name, email, passwordEncoder.encode(password)));
+        repository.save(new UserEntity(name, email, passwordHasher.encode(password)));
+    }
+
+    public UserEntity getUserByEmail(String email) {
+        return repository.getUserEntitiesByEmail(email);
     }
 }

@@ -1,6 +1,7 @@
-package com.poab.booking_system.user;
+package com.poab.booking_system.auth;
 
-import com.poab.booking_system.user.dto.CreateUserRequest;
+import com.poab.booking_system.user.UserRepository;
+import com.poab.booking_system.auth.dto.CreateUserRequest;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,11 +24,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
 @Testcontainers
-class UserIntegrationTest {
+public class AuthIntegrationTest {
 
     @Container
     @ServiceConnection
@@ -44,7 +46,7 @@ class UserIntegrationTest {
     private UserRepository repository;
 
     @Test
-    void createUser_shouldReturn201_whenRequestIsValid() throws Exception {
+    void registerUser_shouldReturn201_whenRequestIsValid() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
@@ -56,7 +58,7 @@ class UserIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidRegistrationRequests")
-    void createUser_shouldReturn400_whenRequestIsInvalid(CreateUserRequest request) throws Exception {
+    void registerUser_shouldReturn400_whenRequestIsInvalid(CreateUserRequest request) throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -79,7 +81,7 @@ class UserIntegrationTest {
     }
 
     @Test
-    void createUser_shouldReturn409_whenEmailIsNotUnique() throws Exception {
+    void registerUser_shouldReturn409_whenEmailIsNotUnique() throws Exception {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
@@ -94,3 +96,4 @@ class UserIntegrationTest {
                 .andExpect(status().isConflict());
     }
 }
+
