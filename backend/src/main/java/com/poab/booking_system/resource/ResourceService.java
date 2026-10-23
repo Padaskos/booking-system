@@ -42,7 +42,7 @@ public class ResourceService {
     }
 
     @Transactional
-    ResourceEntity updateResource(CreateResourceRequest request, UUID id) {
+    public ResourceEntity updateResource(CreateResourceRequest request, UUID id) {
         ResourceEntity entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
 
@@ -54,5 +54,11 @@ public class ResourceService {
         );
         repository.saveAndFlush(entity);
         return entity;
+    }
+
+    public void updateStatusById(UUID id, boolean status) {
+        ResourceEntity entity = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+        entity.setActive(status);
     }
 }

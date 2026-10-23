@@ -4,6 +4,7 @@ package com.poab.booking_system.resource;
 import com.poab.booking_system.resource.dto.CreateResourceRequest;
 import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import com.poab.booking_system.resource.dto.ResourceResponse;
+import com.poab.booking_system.resource.dto.UpdateStatusRequest;
 import jakarta.transaction.Transactional;
 import org.assertj.core.api.AssertionsForClassTypes;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,9 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -66,14 +70,12 @@ class ResourceIntegrationTest {
             List<T> content,
             long totalElements,
             int totalPages
-    ) {
-    }
+    ) {}
 
     private PageResponse<ResourceResponse> readResourcePage(MvcResult result) throws Exception {
         return objectMapper.readValue(
                 result.getResponse().getContentAsString(StandardCharsets.UTF_8),
-                new TypeReference<>() {
-                }
+                new TypeReference<>() {}
         );
     }
 
@@ -323,6 +325,33 @@ class ResourceIntegrationTest {
     }
 
     @Test
+    void getResources_shouldReturn400_whenSizeExceedsLimit()
+            throws Exception {
+
+        mockMvc.perform(get("/api/resources")
+                        .param("size", "101"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResources_shouldReturn400_whenTypeIsInvalid()
+            throws Exception {
+
+        mockMvc.perform(get("/api/resources")
+                        .param("type", "INVALID_TYPE"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResources_shouldReturn400_whenSortFieldIsInvalid()
+            throws Exception {
+
+        mockMvc.perform(get("/api/resources")
+                        .param("sort", "description,asc"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void getResourceById_shouldReturnResource_whenResourceExists() throws Exception {
         ResourceEntity saved = repository.saveAndFlush(
                 createResource("Projector", ResourceType.CAMERA)
@@ -376,7 +405,50 @@ class ResourceIntegrationTest {
                 DetailedResourceResponse.class);
 
         assertThat(response.id()).isEqualTo(saved.getId());
-        assertThat(response.isActive()).isFalse();
+        assertFalse(response.isActive());
+    }
+
+    private ResourceEntity saveResource(boolean active) {
+        ResourceEntity entity = new ResourceEntity("name", "description", "location", ResourceType.CAMERA);
+        entity.setActive(active);
+        return repository.saveAndFlush(entity);
+    }
+
+    private void patchStatus(UUID id, boolean status) throws Exception {
+        mockMvc.perform(patch("/api/resources/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(status))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void updateResourceStatusById_StatusToActive() throws Exception {
+        ResourceEntity saved = saveResource(false);
+        patchStatus(saved.getId(), true);
+        assertTrue(repository.findById(saved.getId()).orElseThrow().isActive());
+    }
+
+    @Test
+    void updateResourceStatusById_StatusToInactive() throws Exception {
+        ResourceEntity saved = saveResource(true);
+        patchStatus(saved.getId(), false);
+        assertFalse(repository.findById(saved.getId()).orElseThrow().isActive());
+    }
+
+    @Test
+    void updateResourceStatusById_idNotFound() throws Exception {
+        mockMvc.perform(patch("/api/resources/{id}/status", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(false))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateResourceStatusById_invalidRequest() throws Exception {
+        mockMvc.perform(patch("/api/resources/{id}/status", UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(null))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

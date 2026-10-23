@@ -1,3 +1,6 @@
+@baseurl = http://localhost:8080
+@id = 84977391-4405-4521-ac45-c822924be5d3
+
 ### GET request to example server
 POST http://localhost:8080/api/resources
 Content-Type: application/json
@@ -10,10 +13,7 @@ Content-Type: application/json
 }
 
 ###
-GET http://localhost:8080/api/resources?page=0&size=101
-
-###
-GET http://localhost:8080/api/resources/83d81226-3df9-40cd-aee6-80542c66c1c2
+GET http://localhost:8080/api/resources?page=0&size=20
 
 ### PUT request
 PUT http://localhost:8080/api/resources/83d81226-3df9-40cd-aee6-80542c66c1c2
@@ -24,4 +24,12 @@ Content-Type: application/json
   "description": "Moved to top floor",
   "location": "Floor 9",
   "type": "ROOM"
+}
+
+###
+PATCH http://localhost:8080/api/resources/{{id}}/status
+Content-Type: application/json
+
+{
+  "status": "false"
 }
