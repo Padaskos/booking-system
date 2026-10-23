@@ -1,5 +1,6 @@
 package com.poab.booking_system.user;
 
+import com.poab.booking_system.auth.UnauthorizedCredentials;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -23,6 +24,8 @@ public class UserService {
     }
 
     public UserEntity getUserByEmail(String email) {
-        return repository.getUserEntitiesByEmail(email);
+        if (!repository.existsByEmailIgnoreCase(email))
+            throw new UnauthorizedCredentials();
+        return repository.getUserEntitiesByEmailIgnoreCase(email);
     }
 }

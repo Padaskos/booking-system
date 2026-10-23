@@ -1,7 +1,10 @@
 package com.poab.booking_system.auth;
 
+import com.poab.booking_system.auth.dto.LoginRequest;
+import com.poab.booking_system.auth.dto.UserDetailsResponse;
 import com.poab.booking_system.user.UserRepository;
 import com.poab.booking_system.auth.dto.CreateUserRequest;
+import com.poab.booking_system.user.UserRole;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -13,6 +16,8 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -44,6 +49,9 @@ public class AuthIntegrationTest {
 
     @Autowired
     private UserRepository repository;
+
+    @Autowired
+    private AuthService authService;
 
     @Test
     void registerUser_shouldReturn201_whenRequestIsValid() throws Exception {
@@ -94,6 +102,78 @@ public class AuthIntegrationTest {
                                 new CreateUserRequest("Second", "paris@poab.be", "123password123")
                         )))
                 .andExpect(status().isConflict());
+    }
+    @Test
+    void login_shouldReturnUserDetails_whenCredentialsAreValid() throws Exception {
+        registerTestUser();
+
+        MvcResult result = performLogin(
+                new LoginRequest("paris@poab.be", "123password123")
+        )
+                .andExpect(status().isOk())
+                .andReturn();
+
+        UserDetailsResponse response = objectMapper.readValue(
+                result.getResponse().getContentAsString(),
+                UserDetailsResponse.class
+        );
+
+        assertThat(response.id()).isNotNull();
+        assertThat(response.name()).isEqualTo("Paris");
+        assertThat(response.email()).isEqualTo("paris@poab.be");
+        assertThat(response.role()).isEqualTo(UserRole.USER);
+    }
+
+    @Test
+    void login_shouldReturn401_whenPasswordIsWrong() throws Exception {
+        registerTestUser();
+
+        performLogin(new LoginRequest(
+                "paris@poab.be",
+                "wrongpassword1"
+        )).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void login_shouldReturn401_whenUserDoesNotExist() throws Exception {
+        performLogin(new LoginRequest(
+                "ghost@poab.be",
+                "123password123"
+        )).andExpect(status().isUnauthorized());
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidLoginRequests")
+    void login_shouldReturn400_whenRequestIsInvalid(LoginRequest request)
+            throws Exception {
+
+        performLogin(request)
+                .andExpect(status().isBadRequest());
+    }
+
+    private ResultActions performLogin(LoginRequest request) throws Exception {
+        return mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+    }
+
+    private void registerTestUser() {
+        authService.registerUser(
+                "Paris",
+                "paris@poab.be",
+                "123password123"
+        );
+    }
+
+    private static Stream<Arguments> invalidLoginRequests() {
+        return Stream.of(
+                Arguments.of(new LoginRequest(null, "123password123")),
+                Arguments.of(new LoginRequest("", "123password123")),
+                Arguments.of(new LoginRequest("parispoab.be", "123password123")),
+                Arguments.of(new LoginRequest("paris@poab.be", null)),
+                Arguments.of(new LoginRequest("paris@poab.be", "short")),
+                Arguments.of(new LoginRequest("paris@poab.be", "a".repeat(73)))
+        );
     }
 }
 

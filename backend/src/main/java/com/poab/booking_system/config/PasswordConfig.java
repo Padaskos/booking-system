@@ -9,14 +9,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 public class PasswordConfig {
 
     @Bean
-    public PasswordHasher passwordEncoder() {
-        BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
+    org.springframework.security.crypto.password.PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-        return new PasswordHasher() {
-            @Override
-            public String encode(String password) {
-                return bCryptPasswordEncoder.encode(password);
-            }
-        };
+    @Bean
+    PasswordHasher passwordHasher(org.springframework.security.crypto.password.PasswordEncoder encoder) {
+        return encoder::encode;
     }
 }
