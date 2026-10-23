@@ -6,7 +6,6 @@ import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import com.poab.booking_system.resource.dto.ResourceResponse;
 import com.poab.booking_system.resource.dto.UpdateStatusRequest;
 import jakarta.transaction.Transactional;
-import jakarta.validation.constraints.Null;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,9 +26,9 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -340,7 +339,7 @@ class ResourceIntegrationTest {
         assertThat(response.description()).isEqualTo("Meeting projector");
         assertThat(response.location()).isEqualTo("Leuven");
         assertThat(response.type()).isEqualTo(ResourceType.CAMERA);
-        assertThat(response.isActive()).isTrue();
+        assertTrue(response.isActive());
         assertThat(response.creationTimestamp()).isNotNull();
         assertThat(response.updatedTimestamp()).isNotNull();
     }
@@ -389,7 +388,7 @@ class ResourceIntegrationTest {
         );
 
         assertThat(response.id()).isEqualTo(saved.getId());
-        assertThat(response.isActive()).isFalse();
+        assertFalse(response.isActive());
     }
 
     private ResourceEntity saveResource(boolean active) {
@@ -409,14 +408,14 @@ class ResourceIntegrationTest {
     void updateResourceStatusById_StatusToActive() throws Exception {
         ResourceEntity saved = saveResource(false);
         patchStatus(saved.getId(), true);
-        assertThat(repository.findById(saved.getId()).orElseThrow().isActive()).isTrue();
+        assertTrue(repository.findById(saved.getId()).orElseThrow().isActive());
     }
 
     @Test
     void updateResourceStatusById_StatusToInactive() throws Exception {
         ResourceEntity saved = saveResource(true);
         patchStatus(saved.getId(), false);
-        assertThat(repository.findById(saved.getId()).orElseThrow().isActive()).isFalse();
+        assertFalse(repository.findById(saved.getId()).orElseThrow().isActive());
     }
 
     @Test
