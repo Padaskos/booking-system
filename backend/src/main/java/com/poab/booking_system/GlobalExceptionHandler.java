@@ -1,8 +1,8 @@
 package com.poab.booking_system;
 
+import com.poab.booking_system.resource.InvalidRequestException;
 import com.poab.booking_system.resource.ResourceNotFoundException;
 import org.springframework.http.HttpStatus;
-import com.poab.booking_system.resource.InvalidRequestException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -20,4 +20,5 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleInvalidRequest(InvalidRequestException ex) {
         return ResponseEntity.badRequest().body(ex.getMessage());
     }
+
 }

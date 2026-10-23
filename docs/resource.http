@@ -6,14 +6,25 @@ POST http://localhost:8080/api/resources
 Content-Type: application/json
 
 {
-  "name": "Meeting Room B",
-  "description": "Large meeting room on 2nd floor",
-  "location": "Floor 2",
+  "name": "Meeting Room A",
+  "description": "Ground floor meeting room",
+  "location": "Floor 1",
   "type": "ROOM"
 }
 
 ###
 GET http://localhost:8080/api/resources?page=0&size=20
+
+### PUT request
+PUT http://localhost:8080/api/resources/83d81226-3df9-40cd-aee6-80542c66c1c2
+Content-Type: application/json
+
+{
+  "name": "Changed Room A",
+  "description": "Moved to top floor",
+  "location": "Floor 9",
+  "type": "ROOM"
+}
 
 ###
 PATCH http://localhost:8080/api/resources/{{id}}/status
