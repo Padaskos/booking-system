@@ -39,9 +39,10 @@ public class ResourceController {
         @RequestParam(required = false) ResourceType type,
         @RequestParam(required = false) String name,
         @RequestParam(required = false) String location,
-        @RequestParam(required = false) Integer page
+        @RequestParam(required = false) Integer page,
+        @RequestParam(required = false) Integer size
     ) {
-        validatePageable(pageable, page);
+        validatePageable(pageable, page, size);
         return resourceService.getResources(pageable, type, name, location)
                 .map(entity -> new ResourceResponse(
                         entity.getId(),
@@ -52,9 +53,13 @@ public class ResourceController {
                 ));
     }
 
-    private static void validatePageable(Pageable pageable, Integer page) {
+    private static void validatePageable(Pageable pageable, Integer page, Integer size) {
         if (page != null && page < 0) {
             throw new InvalidRequestException("Page must be at least 0");
+        }
+
+        if (size != null && size < 1) {
+            throw new InvalidRequestException("Size must be at least 1");
         }
 
         if (pageable.getPageSize() > 100) {
@@ -72,8 +77,31 @@ public class ResourceController {
 
     @GetMapping("/resources/{id}")
     public DetailedResourceResponse getsResourceById(@PathVariable UUID id) {
-        return resourceService.getResourceById(id);
+        ResourceEntity entity =  resourceService.getResourceById(id);
+        return new DetailedResourceResponse(
+                entity.getId(),
+                entity.getName(),
+                entity.getDescription(),
+                entity.getLocation(),
+                entity.getType(),
+                entity.isActive(),
+                entity.getCreationTimestamp(),
+                entity.getUpdatedTimestamp()
+        );
     }
 
-
+    @PutMapping("/resources/{id}")
+    public DetailedResourceResponse updateResource(@Valid @RequestBody CreateResourceRequest request, @PathVariable UUID id) {
+        ResourceEntity entity = resourceService.updateResource(request, id);
+        return new DetailedResourceResponse(
+                entity.getId(),
+                entity.getName(),
+                entity.getDescription(),
+                entity.getLocation(),
+                entity.getType(),
+                entity.isActive(),
+                entity.getCreationTimestamp(),
+                entity.getUpdatedTimestamp()
+        );
+    }
 }
