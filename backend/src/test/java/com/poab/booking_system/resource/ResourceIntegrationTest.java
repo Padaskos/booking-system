@@ -70,14 +70,12 @@ class ResourceIntegrationTest {
             List<T> content,
             long totalElements,
             int totalPages
-    ) {
-    }
+    ) {}
 
     private PageResponse<ResourceResponse> readResourcePage(MvcResult result) throws Exception {
         return objectMapper.readValue(
                 result.getResponse().getContentAsString(StandardCharsets.UTF_8),
-                new TypeReference<>() {
-                }
+                new TypeReference<>() {}
         );
     }
 
