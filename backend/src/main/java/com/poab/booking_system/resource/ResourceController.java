@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -28,6 +29,7 @@ public class ResourceController {
         this.resourceService = resourceService;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/resources")
     @ResponseStatus(HttpStatus.CREATED)
     public void createResource(@Valid @RequestBody CreateResourceRequest request) {
@@ -91,6 +93,7 @@ public class ResourceController {
         );
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/resources/{id}")
     public DetailedResourceResponse updateResource(@Valid @RequestBody CreateResourceRequest request, @PathVariable UUID id) {
         ResourceEntity entity = resourceService.updateResource(request, id);
@@ -106,6 +109,7 @@ public class ResourceController {
         );
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PatchMapping("/resources/{id}/status")
     public void updateResourceStatusById(@PathVariable UUID id, @Valid @RequestBody UpdateStatusRequest request) {
         resourceService.updateStatusById(id, request.status());
