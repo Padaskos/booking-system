@@ -1,0 +1,8 @@
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <input type="email" formControlName="email" placeholder="Email" />
+  <input type="password" formControlName="password" placeholder="Password" />
+  <button type="submit">Log in</button>
+  @if (errorMessage) {
+    <p>{{ errorMessage }}</p>
+  }
+</form>
