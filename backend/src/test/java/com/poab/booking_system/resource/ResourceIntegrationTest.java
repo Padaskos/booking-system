@@ -1,4 +1,3 @@
-
 package com.poab.booking_system.resource;
 
 import com.poab.booking_system.resource.dto.CreateResourceRequest;
@@ -6,7 +5,6 @@ import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import com.poab.booking_system.resource.dto.ResourceResponse;
 import com.poab.booking_system.resource.dto.UpdateStatusRequest;
 import jakarta.transaction.Transactional;
-import org.assertj.core.api.AssertionsForClassTypes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,8 +15,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -31,11 +33,10 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -46,8 +47,8 @@ class ResourceIntegrationTest {
 
     @Container
     @ServiceConnection
-    static PostgreSQLContainer postgres =
-            new PostgreSQLContainer("postgres:17");
+    static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17");
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -66,63 +67,15 @@ class ResourceIntegrationTest {
         ));
     }
 
-    private record PageResponse<T>(
-            List<T> content,
-            long totalElements,
-            int totalPages
-    ) {}
-
-    private PageResponse<ResourceResponse> readResourcePage(MvcResult result) throws Exception {
-        return objectMapper.readValue(
-                result.getResponse().getContentAsString(StandardCharsets.UTF_8),
-                new TypeReference<>() {}
-        );
-    }
-
-    private static final String genericName = "Name";
-    private static final String genericDescription = "Description";
-    private static final String genericLocation = "Location";
-    private static final ResourceType genericResourceType = ResourceType.LAPTOP;
-
-    private static ResourceEntity createResource() {
-        return new ResourceEntity(genericName, genericDescription, genericLocation, genericResourceType);
-    }
-
-    private static ResourceEntity createResource(String name, ResourceType type) {
-        return new ResourceEntity(name, genericDescription, genericLocation, type);
-    }
-
-    private static CreateResourceRequest createDto() {
-        return new CreateResourceRequest(genericName, genericDescription, genericLocation, genericResourceType);
-    }
-
-    private static CreateResourceRequest createDto(String name, ResourceType type) {
-        return new CreateResourceRequest(name, genericDescription, genericLocation, type);
-    }
-
-    private void assertResourceEntity(ResourceEntity entity) {
-        assertThat(entity.getName()).isEqualTo(genericName);
-        assertThat(entity.getDescription()).isEqualTo(genericDescription);
-        assertThat(entity.getLocation()).isEqualTo(genericLocation);
-        assertThat(entity.getType()).isEqualTo(genericResourceType);
-    }
-
     @Test
     void createResource_shouldReturn201_whenRequestIsValid() throws Exception {
-        mockMvc.perform(post("/api/resources")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto())))
-                .andDo(print())
-                .andExpect(status().isCreated());
+        postResource(createDto()).andExpect(status().isCreated());
     }
 
     @ParameterizedTest
     @MethodSource("invalidCreateResourceRequests")
     void createResource_shouldReturn400_whenRequestIsInvalid(CreateResourceRequest request) throws Exception {
-        mockMvc.perform(post("/api/resources")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+        postResource(request).andExpect(status().isBadRequest());
     }
 
     private static Stream<Arguments> invalidCreateResourceRequests() {
@@ -137,11 +90,7 @@ class ResourceIntegrationTest {
 
     @Test
     void getResources_shouldReturn200_withAllActiveResources() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/resources"))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        PageResponse<ResourceResponse> response = readResourcePage(result);
+        PageResponse<ResourceResponse> response = getResourcesPage(queryParams());
 
         assertThat(response.content()).hasSize(3);
         assertThat(response.totalElements()).isEqualTo(3);
@@ -149,28 +98,16 @@ class ResourceIntegrationTest {
 
     @Test
     void getResources_shouldFilterByType() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/resources")
-                        .param("type", "LAPTOP"))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        PageResponse<ResourceResponse> response = readResourcePage(result);
+        PageResponse<ResourceResponse> response = getResourcesPage(queryParams("type", "LAPTOP"));
 
         assertThat(response.content()).hasSize(2);
-        assertThat(response.content())
-                .allMatch(resource -> resource.type() == ResourceType.LAPTOP);
+        assertThat(response.content()).allMatch(resource -> resource.type() == ResourceType.LAPTOP);
     }
 
     @Test
     void getResources_shouldFilterByName_caseInsensitive() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/resources")
-                        .param("name", "laptop"))
-                .andExpect(status().isOk())
-                .andReturn();
+        PageResponse<ResourceResponse> response = getResourcesPage(queryParams("name", "laptop"));
 
-        PageResponse<ResourceResponse> response = readResourcePage(result);
-
-        assertThat(response.content()).hasSize(2);
         assertThat(response.content())
                 .extracting(ResourceResponse::name)
                 .containsExactlyInAnyOrder("Laptop A", "Laptop B");
@@ -178,14 +115,8 @@ class ResourceIntegrationTest {
 
     @Test
     void getResources_shouldFilterByLocation() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/resources")
-                        .param("location", "gent"))
-                .andExpect(status().isOk())
-                .andReturn();
+        PageResponse<ResourceResponse> response = getResourcesPage(queryParams("location", "gent"));
 
-        PageResponse<ResourceResponse> response = readResourcePage(result);
-
-        assertThat(response.content()).hasSize(1);
         assertThat(response.content())
                 .extracting(ResourceResponse::location)
                 .containsOnly("Gent");
@@ -193,44 +124,23 @@ class ResourceIntegrationTest {
 
     @Test
     void getResources_shouldFilterByNameAndType_combined() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/resources")
-                        .param("name", "Camera")
-                        .param("type", "CAMERA"))
-                .andExpect(status().isOk())
-                .andReturn();
+        PageResponse<ResourceResponse> response =
+                getResourcesPage(queryParams("name", "Camera", "type", "CAMERA"));
 
-        PageResponse<ResourceResponse> response = readResourcePage(result);
-
-        assertThat(response.content()).hasSize(1);
-        assertThat(response.content())
-                .extracting(ResourceResponse::name)
-                .containsOnly("Camera A");
-        assertThat(response.content())
-                .extracting(ResourceResponse::type)
-                .containsOnly(ResourceType.CAMERA);
+        assertThat(response.content()).extracting(ResourceResponse::name).containsOnly("Camera A");
+        assertThat(response.content()).extracting(ResourceResponse::type).containsOnly(ResourceType.CAMERA);
     }
 
     @Test
     void getResources_shouldReturnEmpty_whenNoMatchFound() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/resources")
-                        .param("name", "nonexistent"))
-                .andExpect(status().isOk())
-                .andReturn();
+        PageResponse<ResourceResponse> response = getResourcesPage(queryParams("name", "nonexistent"));
 
-        PageResponse<ResourceResponse> response = readResourcePage(result);
-
-        assertThat(response.content()).hasSize(0);
+        assertThat(response.content()).isEmpty();
     }
 
     @Test
     void getResources_shouldRespectPagination() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/resources")
-                        .param("page", "0")
-                        .param("size", "2"))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        PageResponse<ResourceResponse> response = readResourcePage(result);
+        PageResponse<ResourceResponse> response = getResourcesPage(queryParams("page", "0", "size", "2"));
 
         assertThat(response.content()).hasSize(2);
         assertThat(response.totalElements()).isEqualTo(3);
@@ -239,65 +149,36 @@ class ResourceIntegrationTest {
 
     @Test
     void getResources_shouldNotReturnInactiveResources() throws Exception {
-        ResourceEntity inactive = createResource();
-        inactive.setActive(false);
-        repository.save(inactive);
+        repository.save(inactiveResource(createResource()));
 
-        MvcResult result = mockMvc.perform(get("/api/resources"))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        PageResponse<ResourceResponse> response = readResourcePage(result);
+        PageResponse<ResourceResponse> response = getResourcesPage(queryParams());
 
         assertThat(response.totalElements()).isEqualTo(3);
-        assertThat(response.content())
-                .extracting(ResourceResponse::name)
-                .doesNotContain(genericName);
+        assertThat(response.content()).extracting(ResourceResponse::name).doesNotContain(genericName);
     }
 
     @Test
     void getResources_shouldSortByNameAscending() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/resources")
-                        .param("sort", "name,asc"))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        PageResponse<ResourceResponse> response = readResourcePage(result);
-
+        PageResponse<ResourceResponse> response = getResourcesPage(queryParams("sort", "name,asc"));
 
         assertThat(response.content())
                 .extracting(ResourceResponse::name)
-                .containsExactly(
-                        "Camera A",
-                        "Laptop A",
-                        "Laptop B"
-                );
+                .containsExactly("Camera A", "Laptop A", "Laptop B");
     }
 
     @Test
     void getResources_shouldSortByLocationDescending() throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/resources")
-                        .param("sort", "location,desc"))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        PageResponse<ResourceResponse> response = readResourcePage(result);
+        PageResponse<ResourceResponse> response = getResourcesPage(queryParams("sort", "location,desc"));
 
         assertThat(response.content())
                 .extracting(ResourceResponse::location)
-                .containsExactly(
-                        "Gent",
-                        "Brussel",
-                        "Antwerpen"
-                );
+                .containsExactly("Gent", "Brussel", "Antwerpen");
     }
 
     @ParameterizedTest
     @MethodSource("invalidGetResourcesParams")
     void getResources_shouldReturn400_whenParamsAreInvalid(String paramName, String paramValue) throws Exception {
-        mockMvc.perform(get("/api/resources")
-                        .param(paramName, paramValue))
-                .andExpect(status().isBadRequest());
+        getResourcesRequest(queryParams(paramName, paramValue)).andExpect(status().isBadRequest());
     }
 
     private static Stream<Arguments> invalidGetResourcesParams() {
@@ -312,113 +193,33 @@ class ResourceIntegrationTest {
         );
     }
 
-    private void assertResourceEntity(ResourceEntity entity, DetailedResourceResponse request) {
-        assertThat(entity.getName()).isEqualTo(request.name());
-        assertThat(entity.getDescription()).isEqualTo(request.description());
-        assertThat(entity.getLocation()).isEqualTo(request.location());
-        assertThat(entity.getType()).isEqualTo(request.type());
-        assertThat(entity.getId()).isEqualTo(request.id());
-        AssertionsForClassTypes.assertThat(request.isActive()).isTrue();
-        AssertionsForClassTypes.assertThat(entity.getCreationTimestamp()).isEqualTo(request.creationTimestamp());
-        assertThat(repository.findById(entity.getId()).orElseThrow().getUpdatedTimestamp())
-                .isAfterOrEqualTo(request.updatedTimestamp());
-    }
-
-    @Test
-    void getResources_shouldReturn400_whenSizeExceedsLimit()
-            throws Exception {
-
-        mockMvc.perform(get("/api/resources")
-                        .param("size", "101"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void getResources_shouldReturn400_whenTypeIsInvalid()
-            throws Exception {
-
-        mockMvc.perform(get("/api/resources")
-                        .param("type", "INVALID_TYPE"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void getResources_shouldReturn400_whenSortFieldIsInvalid()
-            throws Exception {
-
-        mockMvc.perform(get("/api/resources")
-                        .param("sort", "description,asc"))
-                .andExpect(status().isBadRequest());
-    }
-
     @Test
     void getResourceById_shouldReturnResource_whenResourceExists() throws Exception {
-        ResourceEntity saved = repository.saveAndFlush(
-                createResource("Projector", ResourceType.CAMERA)
-        );
+        ResourceEntity saved = repository.saveAndFlush(createResource());
 
-        MvcResult result = mockMvc.perform(
-                        get("/api/resources/{id}", saved.getId())
-                )
-                .andExpect(status().isOk())
-                .andReturn();
-
-        DetailedResourceResponse response = objectMapper.readValue(
-                result.getResponse().getContentAsString(),
-                DetailedResourceResponse.class);
+        DetailedResourceResponse response = getResourceById(saved.getId());
 
         assertResourceEntity(saved, response);
     }
 
     @Test
     void getResourceById_shouldReturn404_whenResourceDoesNotExist() throws Exception {
-
-        UUID unknownId = UUID.randomUUID();
-
-        mockMvc.perform(get("/api/resources/{id}", unknownId))
-                .andExpect(status().isNotFound());
+        getResourceByIdRequest(UUID.randomUUID()).andExpect(status().isNotFound());
     }
 
     @Test
     void getResourceById_shouldReturn400_whenIdIsMalformed() throws Exception {
-
-        mockMvc.perform(get("/api/resources/not-a-uuid"))
-                .andExpect(status().isBadRequest());
+        getResourceByIdRequest("not-a-uuid").andExpect(status().isBadRequest());
     }
 
     @Test
     void getResourceById_shouldReturnInactiveResource() throws Exception {
+        ResourceEntity saved = repository.saveAndFlush(inactiveResource(createResource()));
 
-        ResourceEntity inactive = createResource();
-
-        inactive.setActive(false);
-        ResourceEntity saved = repository.saveAndFlush(inactive);
-
-        MvcResult result = mockMvc.perform(
-                        get("/api/resources/{id}", saved.getId())
-                )
-                .andExpect(status().isOk())
-                .andReturn();
-
-        DetailedResourceResponse response = objectMapper.readValue(
-                result.getResponse().getContentAsString(),
-                DetailedResourceResponse.class);
+        DetailedResourceResponse response = getResourceById(saved.getId());
 
         assertThat(response.id()).isEqualTo(saved.getId());
         assertFalse(response.isActive());
-    }
-
-    private ResourceEntity saveResource(boolean active) {
-        ResourceEntity entity = new ResourceEntity("name", "description", "location", ResourceType.CAMERA);
-        entity.setActive(active);
-        return repository.saveAndFlush(entity);
-    }
-
-    private void patchStatus(UUID id, boolean status) throws Exception {
-        mockMvc.perform(patch("/api/resources/{id}/status", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(status))))
-                .andExpect(status().isOk());
     }
 
     @Test
@@ -437,78 +238,158 @@ class ResourceIntegrationTest {
 
     @Test
     void updateResourceStatusById_idNotFound() throws Exception {
-        mockMvc.perform(patch("/api/resources/{id}/status", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(false))))
-                .andExpect(status().isNotFound());
+        patchStatusRequest(UUID.randomUUID(), false).andExpect(status().isNotFound());
     }
 
     @Test
     void updateResourceStatusById_invalidRequest() throws Exception {
-        mockMvc.perform(patch("/api/resources/{id}/status", UUID.randomUUID())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new UpdateStatusRequest(null))))
-                .andExpect(status().isBadRequest());
+        patchStatusRequest(UUID.randomUUID(), null).andExpect(status().isBadRequest());
     }
 
     @Test
     void updateResource_shouldReturnUpdatedResource_whenRequestIsValid() throws Exception {
-
         ResourceEntity saved = repository.saveAndFlush(createResource());
-        CreateResourceRequest request = new CreateResourceRequest("New name", "New description", "Gent", ResourceType.CAMERA);
+        CreateResourceRequest request =
+                new CreateResourceRequest("New name", "New description", "Gent", ResourceType.CAMERA);
 
-        MvcResult result = mockMvc.perform(
-                        put("/api/resources/{id}", saved.getId())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(request))
-                )
-                .andExpect(status().isOk())
-                .andReturn();
-
-        DetailedResourceResponse response = objectMapper.readValue(
-                result.getResponse().getContentAsString(),
-                DetailedResourceResponse.class
-        );
+        DetailedResourceResponse response = putResource(saved.getId(), request);
 
         assertResourceEntity(saved, response);
     }
 
     @Test
     void updateResource_shouldReturn404_whenResourceDoesNotExist() throws Exception {
-        mockMvc.perform(
-                        put("/api/resources/{id}", UUID.randomUUID())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(createDto())))
-                .andExpect(status().isNotFound());
+        putResourceRequest(UUID.randomUUID(), createDto()).andExpect(status().isNotFound());
     }
 
     @Test
     void updateResource_shouldReturn400_whenIdIsMalformed() throws Exception {
-        mockMvc.perform(
-                        put("/api/resources/not-a-uuid")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(createDto())))
-                .andExpect(status().isBadRequest());
+        putResourceRequest("not-a-uuid", createDto()).andExpect(status().isBadRequest());
     }
 
     @Test
-    void updateResource_shouldReturn400_andNotUpdate_whenRequestIsInvalid()
-            throws Exception {
-
-        ResourceEntity saved = repository.saveAndFlush(
-                createResource());
-
+    void updateResource_shouldReturn400_andNotUpdate_whenRequestIsInvalid() throws Exception {
+        ResourceEntity saved = repository.saveAndFlush(createResource());
         CreateResourceRequest invalidRequest = createDto(" ", genericResourceType);
 
-        mockMvc.perform(
-                        put("/api/resources/{id}", saved.getId())
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(invalidRequest))
-                )
-                .andExpect(status().isBadRequest());
+        putResourceRequest(saved.getId(), invalidRequest).andExpect(status().isBadRequest());
 
-        ResourceEntity unchanged = repository.findById(saved.getId()).orElseThrow();
+        assertResourceEntity(repository.findById(saved.getId()).orElseThrow());
+    }
 
-        assertResourceEntity(unchanged);
+    private static final String genericName = "Name";
+    private static final String genericDescription = "Description";
+    private static final String genericLocation = "Location";
+    private static final ResourceType genericResourceType = ResourceType.LAPTOP;
+
+    private record PageResponse<T>(List<T> content, long totalElements, int totalPages) {}
+
+    private static SecurityMockMvcRequestPostProcessors.UserRequestPostProcessor asUser() {
+        return user("test-user").roles("USER");
+    }
+
+    private static SecurityMockMvcRequestPostProcessors.UserRequestPostProcessor asAdmin() {
+        return user("admin").roles("ADMIN");
+    }
+
+    private static MultiValueMap<String, String> queryParams(String... keyValuePairs) {
+        LinkedMultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        for (int i = 0; i < keyValuePairs.length; i += 2) {
+            params.add(keyValuePairs[i], keyValuePairs[i + 1]);
+        }
+        return params;
+    }
+
+    private static ResourceEntity createResource() {
+        return new ResourceEntity(genericName, genericDescription, genericLocation, genericResourceType);
+    }
+
+    private static ResourceEntity inactiveResource(ResourceEntity entity) {
+        entity.setActive(false);
+        return entity;
+    }
+
+    private static CreateResourceRequest createDto() {
+        return new CreateResourceRequest(genericName, genericDescription, genericLocation, genericResourceType);
+    }
+
+    private static CreateResourceRequest createDto(String name, ResourceType type) {
+        return new CreateResourceRequest(name, genericDescription, genericLocation, type);
+    }
+
+    private ResourceEntity saveResource(boolean active) {
+        ResourceEntity entity = createResource();
+        entity.setActive(active);
+        return repository.saveAndFlush(entity);
+    }
+
+    private void assertResourceEntity(ResourceEntity entity) {
+        assertThat(entity.getName()).isEqualTo(genericName);
+        assertThat(entity.getDescription()).isEqualTo(genericDescription);
+        assertThat(entity.getLocation()).isEqualTo(genericLocation);
+        assertThat(entity.getType()).isEqualTo(genericResourceType);
+    }
+
+    private void assertResourceEntity(ResourceEntity entity, DetailedResourceResponse response) {
+        assertThat(entity.getName()).isEqualTo(response.name());
+        assertThat(entity.getDescription()).isEqualTo(response.description());
+        assertThat(entity.getLocation()).isEqualTo(response.location());
+        assertThat(entity.getType()).isEqualTo(response.type());
+        assertThat(entity.getId()).isEqualTo(response.id());
+        assertThat(response.isActive()).isTrue();
+        assertThat(entity.getCreationTimestamp()).isEqualTo(response.creationTimestamp());
+        assertThat(repository.findById(entity.getId()).orElseThrow().getUpdatedTimestamp())
+                .isAfterOrEqualTo(response.updatedTimestamp());
+    }
+
+    private ResultActions postResource(CreateResourceRequest request) throws Exception {
+        return mockMvc.perform(post("/api/resources")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+    }
+
+    private ResultActions getResourcesRequest(MultiValueMap<String, String> params) throws Exception {
+        return mockMvc.perform(get("/api/resources").with(asUser()).params(params));
+    }
+
+    private PageResponse<ResourceResponse> getResourcesPage(MultiValueMap<String, String> params) throws Exception {
+        MvcResult result = getResourcesRequest(params).andExpect(status().isOk()).andReturn();
+        return objectMapper.readValue(
+                result.getResponse().getContentAsString(StandardCharsets.UTF_8),
+                new TypeReference<>() {}
+        );
+    }
+
+    private ResultActions getResourceByIdRequest(Object id) throws Exception {
+        return mockMvc.perform(get("/api/resources/{id}", id).with(asUser()));
+    }
+
+    private DetailedResourceResponse getResourceById(UUID id) throws Exception {
+        MvcResult result = getResourceByIdRequest(id).andExpect(status().isOk()).andReturn();
+        return objectMapper.readValue(result.getResponse().getContentAsString(), DetailedResourceResponse.class);
+    }
+
+    private ResultActions putResourceRequest(Object id, CreateResourceRequest request) throws Exception {
+        return mockMvc.perform(put("/api/resources/{id}", id)
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)));
+    }
+
+    private DetailedResourceResponse putResource(UUID id, CreateResourceRequest request) throws Exception {
+        MvcResult result = putResourceRequest(id, request).andExpect(status().isOk()).andReturn();
+        return objectMapper.readValue(result.getResponse().getContentAsString(), DetailedResourceResponse.class);
+    }
+
+    private ResultActions patchStatusRequest(UUID id, Boolean active) throws Exception {
+        return mockMvc.perform(patch("/api/resources/{id}/status", id)
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new UpdateStatusRequest(active))));
+    }
+
+    private void patchStatus(UUID id, boolean active) throws Exception {
+        patchStatusRequest(id, active).andExpect(status().isOk());
     }
 }
