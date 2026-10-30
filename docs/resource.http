@@ -6,7 +6,7 @@ POST http://localhost:8080/api/resources
 Content-Type: application/json
 
 {
-  "name": "Meeting Room A",
+  "name": "Meeting Room Z",
   "description": "Ground floor meeting room",
   "location": "Floor 1",
   "type": "ROOM"
@@ -32,4 +32,26 @@ Content-Type: application/json
 
 {
   "status": "false"
+}
+
+###
+GET http://localhost:8080/api/resources?page=0&size=10
+
+###
+POST http://localhost:8080/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "UserParis",
+  "email": "paris@user.be",
+  "password": "SuperSecretPassword"
+}
+
+### Login
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "paris@poab.be",
+  "password": "SuperSecretPassword"
 }
