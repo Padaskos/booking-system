@@ -56,6 +56,7 @@ public class ResourceService {
         return entity;
     }
 
+    @Transactional
     public void updateStatusById(UUID id, boolean status) {
         ResourceEntity entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
