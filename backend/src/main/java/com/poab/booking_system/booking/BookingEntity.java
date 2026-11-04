@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
+@Table(name = "booking")
 public class BookingEntity {
 
     @Id

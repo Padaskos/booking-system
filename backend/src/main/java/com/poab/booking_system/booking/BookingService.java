@@ -20,21 +20,20 @@ public class BookingService {
     }
 
     public void createBooking(UUID resourceId, UUID userId, Instant start, Instant end, String bookingDescription) {
-        validateBookingRequest(resourceId, start, end);
+        if (!resourceService.isActive(resourceId))
+            throw new ResourceNotFoundException(resourceId);
+        if (!start.isBefore(end) || start.isBefore(Instant.now()))
+            throw new InvalidRequestException("Invalid time input");
+        if (repository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(resourceId, end, start))
+            throw new InvalidRequestException("Resource is in use during that time");
 
         repository.save(new BookingEntity(resourceId, userId, start, end, bookingDescription));
     }
 
-    private void validateBookingRequest(UUID resourceId, Instant start, Instant end) {
-        if (!resourceService.isActive(resourceId)) {
-            throw new ResourceNotFoundException(resourceId);
-        }
-        if (!start.isBefore(end) || start.isBefore(Instant.now())) {
-            throw new InvalidRequestException("Invalid time input");
-        }
-        if (repository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(resourceId, end, start)) {
-            throw new InvalidRequestException("Resource is in use during that time");
-        }
-    }
+    public boolean isTimeSlotAvailable(UUID resourceId, Instant start, Instant end) {
+        if ((!start.isBefore(end) && start.isBefore(Instant.now())) || !resourceService.isActive(resourceId))
+            return false;
 
+        return !repository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(resourceId, end, start);
+    }
 }

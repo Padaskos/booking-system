@@ -105,7 +105,7 @@ public class BookingServiceTest {
     }
 
     @Test
-    void createBooking_savesConfirmedBooking_whenRequestIsValid() {
+    void createBookingSavesConfirmedBookingWhenRequestIsValid() {
         Instant start = nowPlusSeconds(300);
         Instant end = nowPlusSeconds(600);
 
@@ -137,6 +137,59 @@ public class BookingServiceTest {
         assertThat(saved.getEndTime()).isEqualTo(end);
         assertThat(saved.getBookingDescription()).isEqualTo("Booking");
     }
+
+    @Test
+    void timeSlotIsAvailableWhenRequestIsValid() {
+        Instant start = nowPlusSeconds(300);
+        Instant end = nowPlusSeconds(600);
+
+        when(resourceService.isActive(genericResourceId)).thenReturn(true);
+        when(bookingRepository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
+                genericResourceId, end, start
+        )).thenReturn(false);
+
+        boolean result = bookingService.isTimeSlotAvailable(genericResourceId, start, end);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void timeSlotIsNotAvailableWhenBookingOverlaps() {
+        Instant start = nowPlusSeconds(300);
+        Instant end = nowPlusSeconds(600);
+
+        when(resourceService.isActive(genericResourceId)).thenReturn(true);
+        when(bookingRepository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
+                genericResourceId, end, start
+        )).thenReturn(true);
+
+        boolean result = bookingService.isTimeSlotAvailable(genericResourceId, start, end);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void timeSlotIsNotAvailableWhenResourceIsInactive() {
+        Instant start = nowPlusSeconds(300);
+        Instant end = nowPlusSeconds(600);
+
+        when(resourceService.isActive(genericResourceId)).thenReturn(false);
+
+        boolean result = bookingService.isTimeSlotAvailable(genericResourceId, start, end);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void timeSlotIsNotAvailableWhenTimeInputIsInvalid() {
+        Instant start = nowPlusSeconds(600);
+        Instant end = nowPlusSeconds(300);
+
+        boolean result = bookingService.isTimeSlotAvailable(genericResourceId, start, end);
+
+        assertThat(result).isFalse();
+    }
+
 
     private static final UUID genericResourceId = UUID.randomUUID();
     private static final UUID genericUserId = UUID.randomUUID();
