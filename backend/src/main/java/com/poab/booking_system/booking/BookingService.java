@@ -3,6 +3,7 @@ package com.poab.booking_system.booking;
 import com.poab.booking_system.resource.InvalidRequestException;
 import com.poab.booking_system.resource.ResourceNotFoundException;
 import com.poab.booking_system.resource.ResourceService;
+import com.poab.booking_system.user.UserService;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -13,10 +14,12 @@ public class BookingService {
 
     private final ResourceService resourceService;
     private final BookingRepository repository;
+    private final UserService userService;
 
-    BookingService(ResourceService resourceService, BookingRepository repository) {
+    BookingService(ResourceService resourceService, BookingRepository repository, UserService userService) {
         this.resourceService = resourceService;
         this.repository = repository;
+        this.userService = userService;
     }
 
     public void createBooking(UUID resourceId, UUID userId, Instant start, Instant end, String bookingDescription) {
@@ -35,5 +38,13 @@ public class BookingService {
             return false;
 
         return !repository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(resourceId, end, start);
+    }
+
+    public void deleteBooking(UUID bookingId, UUID userId) {
+        BookingEntity booking = repository.findById(bookingId)
+                .orElseThrow(() -> new BookingNotFoundException(bookingId));
+        if (!userService.isAdmin(userId) && !booking.getUserId().equals(userId))
+            throw new UserNotAllowedException();
+        repository.delete(booking);
     }
 }

@@ -3,6 +3,7 @@ package com.poab.booking_system.booking;
 import com.poab.booking_system.resource.InvalidRequestException;
 import com.poab.booking_system.resource.ResourceNotFoundException;
 import com.poab.booking_system.resource.ResourceService;
+import com.poab.booking_system.user.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -11,12 +12,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class BookingServiceTest {
@@ -29,6 +30,9 @@ public class BookingServiceTest {
 
     @Mock
     private BookingRepository bookingRepository;
+
+    @Mock
+    private UserService userService;
 
 
     @Test
@@ -190,6 +194,79 @@ public class BookingServiceTest {
         assertThat(result).isFalse();
     }
 
+    @Test
+    void deleteBookingDeletesBookingWhenUserOwnsBooking() {
+        UUID bookingId = UUID.randomUUID();
+        BookingEntity booking = new BookingEntity(
+                genericResourceId,
+                genericUserId,
+                nowPlusSeconds(300),
+                nowPlusSeconds(600),
+                "Booking"
+        );
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(userService.isAdmin(genericUserId)).thenReturn(false);
+
+        bookingService.deleteBooking(bookingId, genericUserId);
+
+        verify(bookingRepository).delete(booking);
+    }
+
+    @Test
+    void deleteBookingDeletesBookingWhenUserIsAdmin() {
+        UUID bookingId = UUID.randomUUID();
+        UUID anotherUserId = UUID.randomUUID();
+        BookingEntity booking = new BookingEntity(
+                genericResourceId,
+                anotherUserId,
+                nowPlusSeconds(300),
+                nowPlusSeconds(600),
+                "Booking"
+        );
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(userService.isAdmin(genericUserId)).thenReturn(true);
+
+        bookingService.deleteBooking(bookingId, genericUserId);
+
+        verify(bookingRepository).delete(booking);
+    }
+
+    @Test
+    void deleteBookingFailsWhenBookingDoesNotExist() {
+        UUID bookingId = UUID.randomUUID();
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.empty());
+
+        assertThrows(BookingNotFoundException.class, () -> bookingService.deleteBooking(
+                bookingId,
+                genericUserId
+        ));
+    }
+
+    @Test
+    void deleteBookingFailsWhenUserIsNotAdminAndDoesNotOwnBooking() {
+        UUID bookingId = UUID.randomUUID();
+        UUID anotherUserId = UUID.randomUUID();
+        BookingEntity booking = new BookingEntity(
+                genericResourceId,
+                anotherUserId,
+                nowPlusSeconds(300),
+                nowPlusSeconds(600),
+                "Booking"
+        );
+
+        when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
+        when(userService.isAdmin(genericUserId)).thenReturn(false);
+
+        assertThrows(UserNotAllowedException.class, () -> bookingService.deleteBooking(
+                bookingId,
+                genericUserId
+        ));
+
+        verify(bookingRepository, never()).delete(booking);
+    }
 
     private static final UUID genericResourceId = UUID.randomUUID();
     private static final UUID genericUserId = UUID.randomUUID();
@@ -200,4 +277,3 @@ public class BookingServiceTest {
 
 
 }
-
