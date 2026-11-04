@@ -1,17 +1,21 @@
 package com.poab.booking_system.booking;
 
-import com.poab.booking_system.resource.ResourceEntity;
+import com.poab.booking_system.resource.InvalidRequestException;
+import com.poab.booking_system.resource.ResourceNotFoundException;
 import com.poab.booking_system.resource.ResourceService;
-import com.poab.booking_system.resource.ResourceType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,29 +27,124 @@ public class BookingServiceTest {
     @InjectMocks
     private BookingService bookingService;
 
+    @Mock
+    private BookingRepository bookingRepository;
+
+
     @Test
     void bookingFailsWhenResourceIsInactive() {
         UUID resourceID = UUID.randomUUID();
 
-        ResourceEntity inactiveResource = createResource();
-        inactiveResource.setActive(false);
-        when(resourceService.getResourceById(resourceID)).thenReturn(inactiveResource);
+        when(resourceService.isActive(resourceID)).thenReturn(false);
 
-        assertThrows(ResourceNotAvailableException.class, () -> bookingService.createBooking(resourceID));
+        assertThrows(ResourceNotFoundException.class, () -> bookingService.createBooking(
+                resourceID,
+                genericUserId,
+                nowPlusSeconds(300),
+                nowPlusSeconds(600),
+                "Booking"
+        ));
     }
 
     @Test
-    void bookingFailsWhenRequestedPeriodIsUnavailable() {
-        UUID resourceID = UUID.randomUUID();
+    void bookingFailsWhenStartIsNotBeforeEnd() {
+        when(resourceService.isActive(genericResourceId)).thenReturn(true);
 
+        assertThrows(InvalidRequestException.class, () -> bookingService.createBooking(
+                genericResourceId,
+                genericUserId,
+                nowPlusSeconds(300),
+                nowPlusSeconds(299),
+                "Booking"
+        ));
     }
 
-    private static final String genericName = "Name";
-    private static final String genericDescription = "Description";
-    private static final String genericLocation = "Location";
-    private static final ResourceType genericResourceType = ResourceType.LAPTOP;
+    @Test
+    void bookingFailsWhenStartIsInThePast() {
+        when(resourceService.isActive(genericResourceId)).thenReturn(true);
 
-    private static ResourceEntity createResource() {
-        return new ResourceEntity(genericName, genericDescription, genericLocation, genericResourceType);
+        assertThrows(InvalidRequestException.class, () -> bookingService.createBooking(
+                genericResourceId,
+                genericUserId,
+                nowPlusSeconds(-300),
+                nowPlusSeconds(300),
+                "Booking"
+        ));
     }
+
+    @Test
+    void bookingFailsWhenResourceDoesNotExist() {
+        UUID resourceId = UUID.randomUUID();
+        when(resourceService.isActive(resourceId)).thenThrow(new ResourceNotFoundException(resourceId));
+
+        assertThrows(ResourceNotFoundException.class, () -> bookingService.createBooking(
+                resourceId,
+                genericUserId,
+                nowPlusSeconds(300),
+                nowPlusSeconds(600),
+                "Booking"
+        ));
+    }
+
+    @Test
+    void bookingFailsWhenRequestedPeriodOverlapsExistingBooking() {
+        Instant requestedStart = nowPlusSeconds(300);
+        Instant requestedEnd = nowPlusSeconds(600);
+
+        when(resourceService.isActive(genericResourceId)).thenReturn(true);
+        when(bookingRepository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
+                genericResourceId, requestedEnd, requestedStart)).thenReturn(true);
+
+        assertThrows(InvalidRequestException.class, () -> bookingService.createBooking(
+                genericResourceId,
+                genericUserId,
+                requestedStart,
+                requestedEnd,
+                "Booking"
+        ));
+    }
+
+    @Test
+    void createBooking_savesConfirmedBooking_whenRequestIsValid() {
+        Instant start = nowPlusSeconds(300);
+        Instant end = nowPlusSeconds(600);
+
+        when(resourceService.isActive(genericResourceId)).thenReturn(true);
+        when(bookingRepository
+                .existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(
+                        genericResourceId, end, start
+                ))
+                .thenReturn(false);
+
+        bookingService.createBooking(
+                genericResourceId,
+                genericUserId,
+                start,
+                end,
+                "Booking"
+        );
+
+        ArgumentCaptor<BookingEntity> captor =
+                ArgumentCaptor.forClass(BookingEntity.class);
+
+        verify(bookingRepository).save(captor.capture());
+
+        BookingEntity saved = captor.getValue();
+
+        assertThat(saved.getResourceId()).isEqualTo(genericResourceId);
+        assertThat(saved.getUserId()).isEqualTo(genericUserId);
+        assertThat(saved.getStartTime()).isEqualTo(start);
+        assertThat(saved.getEndTime()).isEqualTo(end);
+        assertThat(saved.getBookingDescription()).isEqualTo("Booking");
+    }
+
+    private static final UUID genericResourceId = UUID.randomUUID();
+    private static final UUID genericUserId = UUID.randomUUID();
+
+    private static Instant nowPlusSeconds(long seconds) {
+        return Instant.now().plusSeconds(seconds);
+    }
+
+
 }
+

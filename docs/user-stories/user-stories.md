@@ -453,8 +453,7 @@ so that the resource becomes available to others.
 
 - A user can cancel their own active booking.
 - An administrator can cancel any booking.
-- A cancelled booking remains stored as history.
-- A cancelled booking no longer blocks the resource.
+- A canceled booking no longer blocks the resource.
 - Repeating a cancellation does not produce an unwanted result.
 - A user cannot cancel another user’s booking.
 

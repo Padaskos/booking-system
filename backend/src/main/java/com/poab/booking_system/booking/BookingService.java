@@ -1,24 +1,39 @@
 package com.poab.booking_system.booking;
 
-import com.poab.booking_system.resource.ResourceEntity;
+import com.poab.booking_system.resource.InvalidRequestException;
+import com.poab.booking_system.resource.ResourceNotFoundException;
 import com.poab.booking_system.resource.ResourceService;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
 public class BookingService {
 
     private final ResourceService resourceService;
+    private final BookingRepository repository;
 
-    BookingService(ResourceService resourceService) {
+    BookingService(ResourceService resourceService, BookingRepository repository) {
         this.resourceService = resourceService;
+        this.repository = repository;
     }
 
-    public void createBooking(UUID resourceId) {
-        ResourceEntity resource = resourceService.getResourceById(resourceId);
-        if (!resource.isActive()) {
-            throw new ResourceNotAvailableException(resourceId);
+    public void createBooking(UUID resourceId, UUID userId, Instant start, Instant end, String bookingDescription) {
+        validateBookingRequest(resourceId, start, end);
+
+        repository.save(new BookingEntity(resourceId, userId, start, end, bookingDescription));
+    }
+
+    private void validateBookingRequest(UUID resourceId, Instant start, Instant end) {
+        if (!resourceService.isActive(resourceId)) {
+            throw new ResourceNotFoundException(resourceId);
+        }
+        if (!start.isBefore(end) || start.isBefore(Instant.now())) {
+            throw new InvalidRequestException("Invalid time input");
+        }
+        if (repository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(resourceId, end, start)) {
+            throw new InvalidRequestException("Resource is in use during that time");
         }
     }
 

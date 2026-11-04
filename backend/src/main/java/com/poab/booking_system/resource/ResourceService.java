@@ -22,8 +22,7 @@ public class ResourceService {
 
     @Transactional
     public void createResource(CreateResourceRequest request) {
-        ResourceEntity entity = new ResourceEntity(request.name(), request.description(), request.location(), request.type());
-        repository.save(entity);
+        repository.save(new ResourceEntity(request.name(), request.description(), request.location(), request.type()));
     }
 
     public Page<ResourceEntity> getResources(Pageable pageable, ResourceType type, String name, String location) {
@@ -36,9 +35,15 @@ public class ResourceService {
         return repository.findAll(spec, pageable);
     }
 
-    public ResourceEntity getResourceById(UUID id) {
+    protected ResourceEntity getResourceById(UUID id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
+    }
+
+        public boolean isActive(UUID id) {
+        ResourceEntity entity = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+        return entity.isActive();
     }
 
     @Transactional
