@@ -1,57 +1,78 @@
 @baseurl = http://localhost:8080
-@id = 84977391-4405-4521-ac45-c822924be5d3
+@resourceId = c8c04d4c-7c67-4b0f-890c-ce211c22667e
+@bookingId = 275d4308-2fc7-4400-b97f-7364c1ab5515
 
-### GET request to example server
-POST http://localhost:8080/api/resources
+@startTime = 2027-01-10T09:00:00Z
+@endTime = 2027-01-10T10:00:00Z
+
+### Register user
+POST {{baseurl}}/api/auth/register
 Content-Type: application/json
 
 {
-  "name": "Meeting Room Z",
-  "description": "Ground floor meeting room",
-  "location": "Floor 1",
-  "type": "ROOM"
-}
-
-###
-GET http://localhost:8080/api/resources?page=0&size=20
-
-### PUT request
-PUT http://localhost:8080/api/resources/83d81226-3df9-40cd-aee6-80542c66c1c2
-Content-Type: application/json
-
-{
-  "name": "Changed Room A",
-  "description": "Moved to top floor",
-  "location": "Floor 9",
-  "type": "ROOM"
-}
-
-###
-PATCH http://localhost:8080/api/resources/{{id}}/status
-Content-Type: application/json
-
-{
-  "status": "false"
-}
-
-###
-GET http://localhost:8080/api/resources?page=0&size=10
-
-###
-POST http://localhost:8080/api/auth/register
-Content-Type: application/json
-
-{
-  "name": "UserParis",
-  "email": "paris@user.be",
+  "name": "Admin",
+  "email": "admin@poab.be",
   "password": "SuperSecretPassword"
 }
 
-### Login
-POST http://localhost:8080/api/auth/login
+### Login user
+POST {{baseurl}}/api/auth/login
 Content-Type: application/json
 
 {
   "email": "paris@poab.be",
   "password": "SuperSecretPassword"
 }
+
+### Create resource
+POST {{baseurl}}/api/resources
+Content-Type: application/json
+
+{
+  "name": "Meeting Room A",
+  "description": "First floor meeting room",
+  "location": "Floor 1",
+  "type": "ROOM"
+}
+
+### Get resources
+GET {{baseurl}}/api/resources?page=0&size=20
+
+### Get resource by id
+GET {{baseurl}}/api/resources/{{resourceId}}
+
+### Update resource
+PUT {{baseurl}}/api/resources/{{resourceId}}
+Content-Type: application/json
+
+{
+  "name": "Updated Meeting Room A",
+  "description": "Updated room description",
+  "location": "Floor 2",
+  "type": "ROOM"
+}
+
+### Update resource status
+PATCH {{baseurl}}/api/resources/{{resourceId}}/status
+Content-Type: application/json
+
+{
+  "status": true
+}
+
+### Check booking availability
+GET {{baseurl}}/booking/availability/{{resourceId}}?startTime={{startTime}}&endTime={{endTime}}
+
+### Create booking
+POST {{baseurl}}/booking
+Content-Type: application/json
+
+{
+  "resourceId": "{{resourceId}}",
+  "startTime": "{{startTime}}",
+  "endTime": "{{endTime}}",
+  "bookingDescription": "Team planning meeting"
+}
+
+### Delete booking
+DELETE {{baseurl}}/booking/{{bookingId}}

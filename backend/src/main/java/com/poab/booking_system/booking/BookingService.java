@@ -1,9 +1,9 @@
 package com.poab.booking_system.booking;
 
 import com.poab.booking_system.resource.InvalidRequestException;
-import com.poab.booking_system.resource.ResourceNotFoundException;
 import com.poab.booking_system.resource.ResourceService;
-import com.poab.booking_system.user.UserService;
+import com.poab.booking_system.resource.ResourceUnavailableException;
+import com.poab.booking_system.user.UserRole;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -14,37 +14,38 @@ public class BookingService {
 
     private final ResourceService resourceService;
     private final BookingRepository repository;
-    private final UserService userService;
 
-    BookingService(ResourceService resourceService, BookingRepository repository, UserService userService) {
+    BookingService(ResourceService resourceService, BookingRepository repository) {
         this.resourceService = resourceService;
         this.repository = repository;
-        this.userService = userService;
     }
 
-    public void createBooking(UUID resourceId, UUID userId, Instant start, Instant end, String bookingDescription) {
+    public BookingEntity createBooking(UUID resourceId, UUID userId, Instant startTime, Instant endTime, String bookingDescription) {
         if (!resourceService.isActive(resourceId))
-            throw new ResourceNotFoundException(resourceId);
-        if (!start.isBefore(end) || start.isBefore(Instant.now()))
+            throw new ResourceUnavailableException(resourceId);
+        if (!startTime.isBefore(endTime) || startTime.isBefore(Instant.now()))
             throw new InvalidRequestException("Invalid time input");
-        if (repository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(resourceId, end, start))
+        if (repository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(resourceId, endTime, startTime))
             throw new InvalidRequestException("Resource is in use during that time");
 
-        repository.save(new BookingEntity(resourceId, userId, start, end, bookingDescription));
+        BookingEntity entity = new BookingEntity(resourceId, userId, startTime, endTime, bookingDescription);
+        repository.save(entity);
+        return entity;
     }
 
     public boolean isTimeSlotAvailable(UUID resourceId, Instant start, Instant end) {
-        if ((!start.isBefore(end) && start.isBefore(Instant.now())) || !resourceService.isActive(resourceId))
+        if (!start.isBefore(end) || start.isBefore(Instant.now()) || !resourceService.isActive(resourceId))
             return false;
 
         return !repository.existsByResourceIdAndStartTimeLessThanAndEndTimeGreaterThan(resourceId, end, start);
     }
 
-    public void deleteBooking(UUID bookingId, UUID userId) {
+    public void deleteBooking(UUID bookingId, UUID userId, UserRole role) {
         BookingEntity booking = repository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException(bookingId));
-        if (!userService.isAdmin(userId) && !booking.getUserId().equals(userId))
+        if (role != UserRole.ADMIN && !booking.getUserId().equals(userId))
             throw new UserNotAllowedException();
+
         repository.delete(booking);
     }
 }

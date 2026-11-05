@@ -3,8 +3,6 @@ package com.poab.booking_system.user;
 import com.poab.booking_system.auth.UnauthorizedCredentials;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
-
 @Service
 public class UserService {
 
@@ -29,11 +27,5 @@ public class UserService {
         if (!repository.existsByEmailIgnoreCase(email))
             throw new UnauthorizedCredentials();
         return repository.getUserEntitiesByEmailIgnoreCase(email);
-    }
-
-    public boolean isAdmin(UUID id) {
-        UserEntity user = repository.findById(id)
-                .orElseThrow(() -> new UserNotFoundException(id));
-        return user.getRole() == UserRole.ADMIN;
     }
 }

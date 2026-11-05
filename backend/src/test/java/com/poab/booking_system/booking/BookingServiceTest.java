@@ -3,7 +3,8 @@ package com.poab.booking_system.booking;
 import com.poab.booking_system.resource.InvalidRequestException;
 import com.poab.booking_system.resource.ResourceNotFoundException;
 import com.poab.booking_system.resource.ResourceService;
-import com.poab.booking_system.user.UserService;
+import com.poab.booking_system.resource.ResourceUnavailableException;
+import com.poab.booking_system.user.UserRole;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -31,17 +32,13 @@ public class BookingServiceTest {
     @Mock
     private BookingRepository bookingRepository;
 
-    @Mock
-    private UserService userService;
-
-
     @Test
     void bookingFailsWhenResourceIsInactive() {
         UUID resourceID = UUID.randomUUID();
 
         when(resourceService.isActive(resourceID)).thenReturn(false);
 
-        assertThrows(ResourceNotFoundException.class, () -> bookingService.createBooking(
+        assertThrows(ResourceUnavailableException.class, () -> bookingService.createBooking(
                 resourceID,
                 genericUserId,
                 nowPlusSeconds(300),
@@ -206,9 +203,8 @@ public class BookingServiceTest {
         );
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
-        when(userService.isAdmin(genericUserId)).thenReturn(false);
 
-        bookingService.deleteBooking(bookingId, genericUserId);
+        bookingService.deleteBooking(bookingId, genericUserId, UserRole.USER);
 
         verify(bookingRepository).delete(booking);
     }
@@ -226,9 +222,8 @@ public class BookingServiceTest {
         );
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
-        when(userService.isAdmin(genericUserId)).thenReturn(true);
 
-        bookingService.deleteBooking(bookingId, genericUserId);
+        bookingService.deleteBooking(bookingId, genericUserId, UserRole.ADMIN);
 
         verify(bookingRepository).delete(booking);
     }
@@ -241,7 +236,8 @@ public class BookingServiceTest {
 
         assertThrows(BookingNotFoundException.class, () -> bookingService.deleteBooking(
                 bookingId,
-                genericUserId
+                genericUserId,
+                UserRole.USER
         ));
     }
 
@@ -258,11 +254,11 @@ public class BookingServiceTest {
         );
 
         when(bookingRepository.findById(bookingId)).thenReturn(Optional.of(booking));
-        when(userService.isAdmin(genericUserId)).thenReturn(false);
 
         assertThrows(UserNotAllowedException.class, () -> bookingService.deleteBooking(
                 bookingId,
-                genericUserId
+                genericUserId,
+                UserRole.USER
         ));
 
         verify(bookingRepository, never()).delete(booking);

@@ -38,6 +38,10 @@ public class BookingEntity {
         this.bookingDescription = bookingDescription;
     }
 
+    public UUID getId() {
+        return id;
+    }
+
     public UUID getResourceId() {
         return resourceId;
     }
