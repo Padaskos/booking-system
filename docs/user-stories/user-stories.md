@@ -433,9 +433,8 @@ so that I can manage my reservations.
 #### Acceptance criteria
 
 - A user only sees their own bookings.
-- Booking information includes the resource, period, purpose, and status.
+- Booking information includes the resource, period, purpose.
 - Upcoming and previous bookings can be distinguished.
-- Bookings can be filtered by status.
 - Upcoming bookings are shown in chronological order.
 - No bookings results in an empty overview.
 

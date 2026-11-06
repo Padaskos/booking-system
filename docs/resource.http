@@ -60,6 +60,12 @@ Content-Type: application/json
   "status": true
 }
 
+### GET /api/bookings/me?period=UPCOMING&page=0&size=20
+GET  {{baseurl}}/booking/me?period=UPCOMING&page=0&size=20
+
+### GET /api/bookings/me?period=PREVIOUS&page=0&size=20
+GET {{baseurl}}/bookings/me?period=PREVIOUS&page=0&size=20
+
 ### Check booking availability
 GET {{baseurl}}/booking/availability/{{resourceId}}?startTime={{startTime}}&endTime={{endTime}}
 

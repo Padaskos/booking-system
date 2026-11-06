@@ -3,9 +3,13 @@ package com.poab.booking_system.booking;
 import com.poab.booking_system.auth.AuthService;
 import com.poab.booking_system.auth.dto.UserDetailsResponse;
 import com.poab.booking_system.booking.dto.AvailabilityResponse;
+import com.poab.booking_system.booking.dto.BookingDetailsResponse;
 import com.poab.booking_system.booking.dto.CreateBookingRequest;
-import com.poab.booking_system.booking.dto.CreateBookingResponse;
+import com.poab.booking_system.helpers.PageableValidator;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -27,23 +31,14 @@ public class BookingController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CreateBookingResponse createBooking(@Valid @RequestBody CreateBookingRequest request, Authentication authentication) {
+    public void createBooking(@Valid @RequestBody CreateBookingRequest request, Authentication authentication) {
         UserDetailsResponse user = authService.getUserDetailsByEmail(authentication.getName());
-        BookingEntity booking = service.createBooking(
+        service.createBooking(
                 request.resourceId(),
                 user.id(),
                 request.startTime(),
                 request.endTime(),
                 request.bookingDescription()
-        );
-
-        return new CreateBookingResponse(
-                booking.getId(),
-                booking.getResourceId(),
-                booking.getUserId(),
-                booking.getStartTime(),
-                booking.getEndTime(),
-                booking.getBookingDescription()
         );
     }
 
@@ -54,6 +49,23 @@ public class BookingController {
             @RequestParam Instant endTime
             ) {
         return new AvailabilityResponse(service.isTimeSlotAvailable(resourceId, startTime, endTime));
+    }
+
+    @GetMapping("/me")
+    public Page<BookingDetailsResponse> getMyBookings(
+            @RequestParam BookingPeriod period,
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            Authentication authentication
+    ) {
+        PageableValidator.validateWithoutSorting(
+                pageable,
+                page,
+                size,
+                "Sorting is not supported for personal bookings. Ordering is determined by the selected period."
+        );        UserDetailsResponse user = authService.getUserDetailsByEmail(authentication.getName());
+        return service.getMyBookings(user.id(), period, pageable);
     }
 
     @DeleteMapping("/{bookingId}")

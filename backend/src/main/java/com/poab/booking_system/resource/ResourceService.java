@@ -1,12 +1,15 @@
 package com.poab.booking_system.resource;
 
 import com.poab.booking_system.resource.dto.CreateResourceRequest;
+import com.poab.booking_system.resource.dto.ResourceNameResponse;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -66,5 +69,14 @@ public class ResourceService {
         ResourceEntity entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
         entity.setActive(status);
+    }
+
+    public List<ResourceNameResponse> getRequestedResourceNamesById(Collection<UUID> idCollection) {
+        return repository.findAllByIdIn(idCollection)
+                .stream().map(resource -> new ResourceNameResponse(
+                        resource.getId(),
+                        resource.getName()
+                ))
+                .toList();
     }
 }

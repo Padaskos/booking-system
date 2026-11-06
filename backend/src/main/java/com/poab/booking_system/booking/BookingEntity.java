@@ -6,7 +6,11 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "booking")
+@Table(name = "booking",
+        indexes = {
+                @Index(name = "idx_booking_user_end_time", columnList = "user_id, end_time"),
+                @Index(name = "idx_booking_user_start_time", columnList = "user_id, start_time")
+        })
 public class BookingEntity {
 
     @Id

@@ -2,7 +2,6 @@ package com.poab.booking_system.booking;
 
 import com.poab.booking_system.booking.dto.AvailabilityResponse;
 import com.poab.booking_system.booking.dto.CreateBookingRequest;
-import com.poab.booking_system.booking.dto.CreateBookingResponse;
 import com.poab.booking_system.resource.ResourceEntity;
 import com.poab.booking_system.resource.ResourceRepository;
 import com.poab.booking_system.resource.ResourceType;
@@ -27,6 +26,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -73,29 +73,19 @@ class BookingIntegrationTest {
     }
 
     @Test
-    void createBooking_shouldReturn201_withCreatedBooking_whenRequestIsValid() throws Exception {
-        Instant start = genericStartTime;
-        Instant end = genericEndTime;
-        CreateBookingRequest request = createDto(resource.getId(), start, end);
+    void createBooking_shouldReturn201_whenRequestIsValid() throws Exception {
+        CreateBookingRequest request = createDto(resource.getId(), genericStartTime, genericEndTime);
 
-        CreateBookingResponse response = postBooking(request);
-
-        assertThat(response.bookingId()).isNotNull();
-        assertThat(response.resourceId()).isEqualTo(resource.getId());
-        assertThat(response.userId()).isEqualTo(user.getId());
-        assertThat(response.startTime()).isEqualTo(start);
-        assertThat(response.endTime()).isEqualTo(end);
-        assertThat(response.bookingDescription()).isEqualTo(genericBookingDescription);
+        BookingEntity saved = postBooking(request);
 
         assertThat(bookingRepository.findAll()).hasSize(1);
 
-        BookingEntity saved = bookingRepository.findById(response.bookingId()).orElseThrow();
+        assertThat(saved.getResourceId()).isEqualTo(resource.getId());
+        assertThat(saved.getUserId()).isEqualTo(user.getId());
+        assertThat(saved.getStartTime()).isEqualTo(genericStartTime);
+        assertThat(saved.getEndTime()).isEqualTo(genericEndTime);
+        assertThat(saved.getBookingDescription()).isEqualTo(genericBookingDescription);
 
-        assertThat(saved.getResourceId()).isEqualTo(response.resourceId());
-        assertThat(saved.getUserId()).isEqualTo(response.userId());
-        assertThat(saved.getStartTime()).isEqualTo(response.startTime());
-        assertThat(saved.getEndTime()).isEqualTo(response.endTime());
-        assertThat(saved.getBookingDescription()).isEqualTo(response.bookingDescription());
     }
 
     @ParameterizedTest
@@ -313,6 +303,167 @@ class BookingIntegrationTest {
         assertThat(bookingRepository.findById(booking.id)).isPresent();
     }
 
+    @Test
+    void getMyBookings_shouldReturnUpcomingBookings_whenPeriodIsUpcoming() throws Exception {
+        BookingEntity booking = bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(300),
+                Instant.now().plusSeconds(600),
+                genericBookingDescription
+        ));
+
+        ObjectNode response = getMyBookings("UPCOMING", 0, 20);
+
+        assertThat(response.get("content")).hasSize(1);
+        assertThat(response.get("content").get(0).get("resourceId").asString()).isEqualTo(resource.getId().toString());
+        assertThat(response.get("content").get(0).get("resourceName").asString()).isEqualTo(resource.getName());
+        assertThat(response.get("content").get(0).get("bookingDescription").asString())
+                .isEqualTo(genericBookingDescription);
+        assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
+        assertThat(response.get("content").get(0).get("endTime").asString()).isEqualTo(booking.getEndTime().toString());
+        assertThat(response.get("totalElements").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void getMyBookings_shouldReturnPreviousBookings_whenPeriodIsPrevious() throws Exception {
+        BookingEntity booking = bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().minusSeconds(600),
+                Instant.now().minusSeconds(300),
+                genericBookingDescription
+        ));
+
+        ObjectNode response = getMyBookings("PREVIOUS", 0, 20);
+
+        assertThat(response.get("content")).hasSize(1);
+        assertThat(response.get("content").get(0).get("resourceId").asString()).isEqualTo(resource.getId().toString());
+        assertThat(response.get("content").get(0).get("resourceName").asString()).isEqualTo(resource.getName());
+        assertThat(response.get("content").get(0).get("bookingDescription").asString())
+                .isEqualTo(genericBookingDescription);
+        assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
+        assertThat(response.get("content").get(0).get("endTime").asString()).isEqualTo(booking.getEndTime().toString());
+        assertThat(response.get("totalElements").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void getMyBookings_shouldOnlyReturnBookingsForAuthenticatedUser() throws Exception {
+        UserEntity otherUser = userRepository.saveAndFlush(new UserEntity(
+                "Other User",
+                "other@example.com",
+                "password"
+        ));
+        bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(300),
+                Instant.now().plusSeconds(600),
+                genericBookingDescription
+        ));
+        bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                otherUser.getId(),
+                Instant.now().plusSeconds(900),
+                Instant.now().plusSeconds(1200),
+                "Other user booking"
+        ));
+
+        ObjectNode response = getMyBookings("UPCOMING", 0, 20);
+
+        assertThat(response.get("content")).hasSize(1);
+        assertThat(response.get("content").get(0).get("bookingDescription").asString())
+                .isEqualTo(genericBookingDescription);
+        assertThat(response.get("totalElements").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void getMyBookings_shouldKeepPageMetadata() throws Exception {
+        bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(300),
+                Instant.now().plusSeconds(600),
+                "First booking"
+        ));
+        bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(900),
+                Instant.now().plusSeconds(1200),
+                "Second booking"
+        ));
+        bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(1500),
+                Instant.now().plusSeconds(1800),
+                "Third booking"
+        ));
+
+        ObjectNode response = getMyBookings("UPCOMING", 1, 2);
+
+        assertThat(response.get("content")).hasSize(1);
+        assertThat(response.get("totalElements").asInt()).isEqualTo(3);
+        assertThat(response.get("totalPages").asInt()).isEqualTo(2);
+        assertThat(response.get("number").asInt()).isEqualTo(1);
+        assertThat(response.get("size").asInt()).isEqualTo(2);
+    }
+
+    @Test
+    void getMyBookings_shouldReturn400_whenPageIsNegative() throws Exception {
+        mockMvc.perform(get("/booking/me")
+                        .param("period", "UPCOMING")
+                        .param("page", "-1")
+                        .param("size", "20")
+                        .with(asUser()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getMyBookings_shouldReturn400_whenSizeIsLessThanOne() throws Exception {
+        mockMvc.perform(get("/booking/me")
+                        .param("period", "UPCOMING")
+                        .param("page", "0")
+                        .param("size", "0")
+                        .with(asUser()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getMyBookings_shouldReturn400_whenSizeIsGreaterThanOneHundred() throws Exception {
+        mockMvc.perform(get("/booking/me")
+                        .param("period", "UPCOMING")
+                        .param("page", "0")
+                        .param("size", "101")
+                        .with(asUser()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getMyBookings_shouldReturn400_whenSortingIsRequested() throws Exception {
+        mockMvc.perform(get("/booking/me")
+                        .param("period", "UPCOMING")
+                        .param("sort", "startTime,asc")
+                        .with(asUser()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getMyBookings_shouldReturn400_whenPeriodIsMissing() throws Exception {
+        mockMvc.perform(get("/booking/me")
+                        .with(asUser()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getMyBookings_shouldReturn400_whenPeriodIsInvalid() throws Exception {
+        mockMvc.perform(get("/booking/me")
+                        .param("period", "INVALID")
+                        .with(asUser()))
+                .andExpect(status().isBadRequest());
+    }
+
     private static final String genericName = "Name";
     private static final String genericDescription = "Description";
     private static final String genericLocation = "Location";
@@ -340,12 +491,16 @@ class BookingIntegrationTest {
         return new CreateBookingRequest(resourceId, start, end, genericBookingDescription);
     }
 
-    private CreateBookingResponse postBooking(CreateBookingRequest request) throws Exception {
-        MvcResult result = postBookingRequest(request)
-                .andExpect(status().isCreated())
-                .andReturn();
+    private BookingEntity postBooking(CreateBookingRequest request) throws Exception {
+        postBookingRequest(request).andExpect(status().isCreated());
 
-        return objectMapper.readValue(result.getResponse().getContentAsString(), CreateBookingResponse.class);
+        return bookingRepository.findAll().stream()
+                .filter(booking -> booking.getResourceId().equals(request.resourceId()))
+                .filter(booking -> booking.getStartTime().equals(request.startTime()))
+                .filter(booking -> booking.getEndTime().equals(request.endTime()))
+                .filter(booking -> booking.getBookingDescription().equals(request.bookingDescription()))
+                .findFirst()
+                .orElseThrow();
     }
 
     private ResultActions postBookingRequest(CreateBookingRequest request) throws Exception {
@@ -354,6 +509,7 @@ class BookingIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)));
     }
+
     private ResultActions getAvailabilityRequest(UUID resourceId, Instant start, Instant end) throws Exception {
         return mockMvc.perform(get("/booking/availability/{resourceId}", resourceId)
                 .param("startTime", start.toString())
@@ -367,6 +523,18 @@ class BookingIntegrationTest {
                 .andReturn();
 
         return objectMapper.readValue(result.getResponse().getContentAsString(), AvailabilityResponse.class);
+    }
+
+    private ObjectNode getMyBookings(String period, int page, int size) throws Exception {
+        MvcResult result = mockMvc.perform(get("/booking/me")
+                        .param("period", period)
+                        .param("page", String.valueOf(page))
+                        .param("size", String.valueOf(size))
+                        .with(asUser()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return (ObjectNode) objectMapper.readTree(result.getResponse().getContentAsString());
     }
 
     private ResultActions deleteBooking(UUID bookingId) throws Exception {
