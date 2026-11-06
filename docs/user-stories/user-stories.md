@@ -433,9 +433,8 @@ so that I can manage my reservations.
 #### Acceptance criteria
 
 - A user only sees their own bookings.
-- Booking information includes the resource, period, purpose, and status.
+- Booking information includes the resource, period, purpose.
 - Upcoming and previous bookings can be distinguished.
-- Bookings can be filtered by status.
 - Upcoming bookings are shown in chronological order.
 - No bookings results in an empty overview.
 
@@ -453,8 +452,7 @@ so that the resource becomes available to others.
 
 - A user can cancel their own active booking.
 - An administrator can cancel any booking.
-- A cancelled booking remains stored as history.
-- A cancelled booking no longer blocks the resource.
+- A canceled booking no longer blocks the resource.
 - Repeating a cancellation does not produce an unwanted result.
 - A user cannot cancel another user’s booking.
 

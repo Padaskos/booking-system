@@ -1,5 +1,6 @@
 package com.poab.booking_system.resource;
 
+import com.poab.booking_system.helpers.PageableValidator;
 import com.poab.booking_system.resource.dto.CreateResourceRequest;
 import com.poab.booking_system.resource.dto.DetailedResourceResponse;
 import com.poab.booking_system.resource.dto.ResourceResponse;
@@ -12,9 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.UUID;
-
 import java.util.Set;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api")
@@ -45,7 +45,12 @@ public class ResourceController {
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
-        validatePageable(pageable, page, size);
+        PageableValidator.validateWithAllowedSortFields(
+                pageable,
+                page,
+                size,
+                ALLOWED_SORT_FIELDS
+        );
         return resourceService.getResources(pageable, type, name, location)
                 .map(entity -> new ResourceResponse(
                         entity.getId(),
@@ -54,28 +59,6 @@ public class ResourceController {
                         entity.getLocation(),
                         entity.getType()
                 ));
-    }
-
-    private static void validatePageable(Pageable pageable, Integer page, Integer size) {
-        if (page != null && page < 0) {
-            throw new InvalidRequestException("Page must be at least 0");
-        }
-
-        if (size != null && size < 1) {
-            throw new InvalidRequestException("Size must be at least 1");
-        }
-
-        if (pageable.getPageSize() > 100) {
-            throw new InvalidRequestException("Size cannot exceed 100");
-        }
-
-        pageable.getSort().forEach(order -> {
-            if (!ALLOWED_SORT_FIELDS.contains(order.getProperty())) {
-                throw new InvalidRequestException(
-                        "Invalid sort field: " + order.getProperty()
-                );
-            }
-        });
     }
 
     @GetMapping("/resources/{id}")
