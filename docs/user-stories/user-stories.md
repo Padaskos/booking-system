@@ -458,9 +458,49 @@ so that the resource becomes available to others.
 
 ---
 
+## Administrative overview
+
+### US-013 — View bookings for a resource
+
+**Priority:** Must have
+
+**As an administrator,**  
+I want to view the bookings of a resource  
+so that I can manage its schedule and reservations.
+
+#### Acceptance criteria
+
+- The administrator can select a resource and view its bookings.
+- Booking information includes the period, purpose, and user who made the booking.
+- Upcoming and previous bookings can be distinguished.
+- Upcoming bookings are shown chronologically.
+- Resources without bookings show an empty overview.
+- Regular users cannot access this overview.
+
+---
+
+### US-014 — View all resources by status
+
+**Priority:** Must have
+
+**As an administrator,**  
+I want to view both active and inactive resources,  
+so that I can manage and reactivate unavailable resources.
+
+#### Acceptance criteria
+
+- The administrator can view all resources regardless of their status.
+- Active and inactive resources can be distinguished.
+- Resources can be filtered by status.
+- An inactive resource can be selected and reactivated.
+- Regular users continue to see only active resources.
+- An empty result is displayed without causing an error.
+
+---
+
 ## Resource maintenance
 
-### US-013 — Plan resource maintenance
+### US-015 — Plan resource maintenance
 
 **Priority:** Should have
 
@@ -480,7 +520,7 @@ so that it cannot be reserved during that period.
 
 ## Booking reliability
 
-### US-014 — Prevent simultaneous conflicting bookings
+### US-016 — Prevent simultaneous conflicting bookings
 
 **Priority:** Must have
 
@@ -494,8 +534,6 @@ so that another user cannot reserve the same resource for the same period.
 - One valid reservation may succeed while the conflicting reservation is rejected.
 - Non-overlapping reservations remain possible.
 - The confirmed booking remains correctly stored.
-
----
 
 # 9. Future changes
 
