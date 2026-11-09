@@ -7,6 +7,10 @@ public class ResourceSpecifications {
         return (root, query, cb) -> cb.isTrue(root.get("isActive"));
     }
 
+    public static Specification<ResourceEntity> isInactive() {
+        return (root, query, cb) -> cb.isFalse(root.get("isActive"));
+    }
+
     public static Specification<ResourceEntity> nameLike(String name) {
         return (root, query, cb) -> {
             if (name == null || name.isBlank()) return null;

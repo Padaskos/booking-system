@@ -30,10 +30,20 @@ public class ResourceService {
 
     public Page<ResourceEntity> getResources(Pageable pageable, ResourceType type, String name, String location) {
         Specification<ResourceEntity> spec = Specification
-                .where(ResourceSpecifications.isActive())
-                .and(ResourceSpecifications.nameLike(name))
+                .where(ResourceSpecifications.nameLike(name))
                 .and(ResourceSpecifications.hasType(type))
-                .and(ResourceSpecifications.locationLike(location));
+                .and(ResourceSpecifications.locationLike(location))
+                .and(ResourceSpecifications.isActive());
+
+        return repository.findAll(spec, pageable);
+    }
+
+    public Page<ResourceEntity> getResourcesInactive(Pageable pageable, ResourceType type, String name, String location) {
+        Specification<ResourceEntity> spec = Specification
+                .where(ResourceSpecifications.nameLike(name))
+                .and(ResourceSpecifications.hasType(type))
+                .and(ResourceSpecifications.locationLike(location))
+                .and(ResourceSpecifications.isInactive());
 
         return repository.findAll(spec, pageable);
     }
