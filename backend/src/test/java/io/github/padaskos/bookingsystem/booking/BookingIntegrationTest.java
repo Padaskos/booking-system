@@ -173,7 +173,7 @@ class BookingIntegrationTest {
 
     @Test
     void createBooking_shouldReturn403_whenUserDoesNotExist() throws Exception {
-        mockMvc.perform(post("/booking")
+        mockMvc.perform(post("/api/booking")
                         .with(user("unknown@example.com").roles("USER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto(
@@ -249,7 +249,7 @@ class BookingIntegrationTest {
 
     @Test
     void isTimeSlotAvailable_shouldReturn400_whenResourceIdIsMalformed() throws Exception {
-        mockMvc.perform(get("/booking/availability/{resourceId}", "not-a-uuid")
+        mockMvc.perform(get("/api/booking/availability/{resourceId}", "not-a-uuid")
                         .param("startTime",genericStartTime.toString())
                         .param("endTime",genericEndTime.toString())
                         .with(asUser()))
@@ -278,7 +278,7 @@ class BookingIntegrationTest {
 
     @Test
     void deleteBooking_shouldReturn400_whenBookingIdIsMalformed() throws Exception {
-        mockMvc.perform(delete("/booking/{bookingId}", "not-a-uuid")
+        mockMvc.perform(delete("/api/booking/{bookingId}", "not-a-uuid")
                         .with(asUser()))
                 .andExpect(status().isBadRequest());
     }
@@ -412,7 +412,7 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenPageIsNegative() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "UPCOMING")
                         .param("page", "-1")
                         .param("size", "20")
@@ -422,7 +422,7 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenSizeIsLessThanOne() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "UPCOMING")
                         .param("page", "0")
                         .param("size", "0")
@@ -432,7 +432,7 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenSizeIsGreaterThanOneHundred() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "UPCOMING")
                         .param("page", "0")
                         .param("size", "101")
@@ -442,7 +442,7 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenSortingIsRequested() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "UPCOMING")
                         .param("sort", "startTime,asc")
                         .with(asUser()))
@@ -451,14 +451,14 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenPeriodIsMissing() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .with(asUser()))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void getMyBookings_shouldReturn400_whenPeriodIsInvalid() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "INVALID")
                         .with(asUser()))
                 .andExpect(status().isBadRequest());
@@ -504,14 +504,14 @@ class BookingIntegrationTest {
     }
 
     private ResultActions postBookingRequest(CreateBookingRequest request) throws Exception {
-        return mockMvc.perform(post("/booking")
+        return mockMvc.perform(post("/api/booking")
                 .with(asUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)));
     }
 
     private ResultActions getAvailabilityRequest(UUID resourceId, Instant start, Instant end) throws Exception {
-        return mockMvc.perform(get("/booking/availability/{resourceId}", resourceId)
+        return mockMvc.perform(get("/api/booking/availability/{resourceId}", resourceId)
                 .param("startTime", start.toString())
                 .param("endTime", end.toString())
                 .with(asUser()));
@@ -526,7 +526,7 @@ class BookingIntegrationTest {
     }
 
     private ObjectNode getMyBookings(String period, int page, int size) throws Exception {
-        MvcResult result = mockMvc.perform(get("/booking/me")
+        MvcResult result = mockMvc.perform(get("/api/booking/me")
                         .param("period", period)
                         .param("page", String.valueOf(page))
                         .param("size", String.valueOf(size))
@@ -538,7 +538,7 @@ class BookingIntegrationTest {
     }
 
     private ResultActions deleteBooking(UUID bookingId) throws Exception {
-        return mockMvc.perform(delete("/booking/{bookingId}", bookingId)
+        return mockMvc.perform(delete("/api/booking/{bookingId}", bookingId)
                 .with(asUser()));
     }
 }
