@@ -103,6 +103,7 @@ public class AuthIntegrationTest {
                         )))
                 .andExpect(status().isConflict());
     }
+
     @Test
     void login_shouldReturnUserDetails_whenCredentialsAreValid() throws Exception {
         registerTestUser();

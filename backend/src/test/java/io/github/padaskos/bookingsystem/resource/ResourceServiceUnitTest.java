@@ -335,7 +335,6 @@ class ResourceServiceUnitTest {
         assertThat(result.getType()).isEqualTo(ResourceType.CAMERA);
 
         verify(repository).findById(resourceId);
-        verify(repository).saveAndFlush(resource);
     }
 
     @Test

@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +19,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/booking")
+@RequestMapping("/api/booking")
 public class BookingController {
 
     private final BookingService service;
@@ -64,8 +65,27 @@ public class BookingController {
                 page,
                 size,
                 "Sorting is not supported for personal bookings. Ordering is determined by the selected period."
-        );        UserDetailsResponse user = authService.getUserDetailsByEmail(authentication.getName());
+        );
+        UserDetailsResponse user = authService.getUserDetailsByEmail(authentication.getName());
         return service.getMyBookings(user.id(), period, pageable);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/{resourceId}/bookings")
+    public Page<BookingDetailsResponse> getResourceBookings(
+            @RequestParam BookingPeriod period,
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @PathVariable UUID resourceId
+    ) {
+        PageableValidator.validateWithoutSorting(
+                pageable,
+                page,
+                size,
+                "Sorting is not supported for view resource bookings. Ordering is determined by the selected period."
+        );
+        return service.getResourceBookings(resourceId, period, pageable);
     }
 
     @DeleteMapping("/{bookingId}")

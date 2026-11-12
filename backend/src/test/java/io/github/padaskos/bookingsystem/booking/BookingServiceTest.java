@@ -7,6 +7,8 @@ import io.github.padaskos.bookingsystem.resource.ResourceService;
 import io.github.padaskos.bookingsystem.resource.ResourceUnavailableException;
 import io.github.padaskos.bookingsystem.resource.dto.ResourceNameResponse;
 import io.github.padaskos.bookingsystem.user.UserRole;
+import io.github.padaskos.bookingsystem.user.UserService;
+import io.github.padaskos.bookingsystem.user.dto.UserEmailResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,6 +42,9 @@ public class BookingServiceTest {
 
     @Mock
     private BookingRepository bookingRepository;
+
+    @Mock
+    private UserService userService;
 
     @Mock
     private Clock clock;
@@ -304,8 +309,8 @@ public class BookingServiceTest {
         );
 
         assertThat(result.getContent()).hasSize(2);
-        assertThat(result.getContent().get(0).resourceName()).isEqualTo("Laptop A");
-        assertThat(result.getContent().get(1).resourceName()).isEqualTo("Camera A");
+        assertThat(result.getContent().get(0).itemName()).isEqualTo("Laptop A");
+        assertThat(result.getContent().get(1).itemName()).isEqualTo("Camera A");
 
         verify(resourceService, times(1)).getRequestedResourceNamesById(List.of(firstResourceId, secondResourceId));
     }
@@ -329,8 +334,8 @@ public class BookingServiceTest {
         );
 
         assertThat(result.getContent()).hasSize(2);
-        assertThat(result.getContent().get(0).resourceName()).isEqualTo("Meeting Room A");
-        assertThat(result.getContent().get(1).resourceName()).isEqualTo("Meeting Room A");
+        assertThat(result.getContent().get(0).itemName()).isEqualTo("Meeting Room A");
+        assertThat(result.getContent().get(1).itemName()).isEqualTo("Meeting Room A");
 
         verify(resourceService, times(1)).getRequestedResourceNamesById(List.of(resourceId));
     }
@@ -352,6 +357,119 @@ public class BookingServiceTest {
 
         Page<BookingDetailsResponse> result = bookingService.getMyBookings(
                 genericUserId,
+                BookingPeriod.UPCOMING,
+                pageable
+        );
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getTotalElements()).isEqualTo(5);
+        assertThat(result.getTotalPages()).isEqualTo(3);
+        assertThat(result.getNumber()).isEqualTo(1);
+        assertThat(result.getSize()).isEqualTo(2);
+    }
+
+    @Test
+    void getResourceBookingsReturnsUpcomingBookingsWithUserEmails() {
+        UUID userId = UUID.randomUUID();
+        BookingEntity booking = bookingForUser(userId, "2026-10-30T11:00:00Z", "2026-10-30T12:00:00Z", "Team meeting");
+
+        givenCurrentTime();
+        givenUpcomingResourceBookings(PageRequest.of(0, 20), booking);
+        givenUserEmails(new UserEmailResponse(userId, "user@example.com"));
+
+        Page<BookingDetailsResponse> result = bookingService.getResourceBookings(
+                genericResourceId,
+                BookingPeriod.UPCOMING,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertBookingResponse(result.getContent().getFirst(), userId, "user@example.com", "Team meeting");
+
+        verify(bookingRepository).findAllByResourceIdAndEndTimeAfterOrderByStartTimeAsc(
+                genericResourceId,
+                fixedNow(),
+                PageRequest.of(0, 20)
+        );
+        verify(bookingRepository, never()).findAllByResourceIdAndEndTimeLessThanEqualOrderByEndTimeDesc(
+                any(),
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    void getResourceBookingsReturnsPreviousBookingsWithUserEmails() {
+        UUID userId = UUID.randomUUID();
+        BookingEntity booking = bookingForUser(userId, "2026-10-29T11:00:00Z", "2026-10-29T12:00:00Z", "Old meeting");
+
+        givenCurrentTime();
+        givenPreviousResourceBookings(PageRequest.of(0, 20), booking);
+        givenUserEmails(new UserEmailResponse(userId, "user@example.com"));
+
+        Page<BookingDetailsResponse> result = bookingService.getResourceBookings(
+                genericResourceId,
+                BookingPeriod.PREVIOUS,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertBookingResponse(result.getContent().getFirst(), userId, "user@example.com", "Old meeting");
+
+        verify(bookingRepository).findAllByResourceIdAndEndTimeLessThanEqualOrderByEndTimeDesc(
+                genericResourceId,
+                fixedNow(),
+                PageRequest.of(0, 20)
+        );
+        verify(bookingRepository, never()).findAllByResourceIdAndEndTimeAfterOrderByStartTimeAsc(
+                any(),
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    void getResourceBookingsRequestsEachUserEmailOnlyOnceWhenUserHasMultipleBookings() {
+        UUID userId = UUID.randomUUID();
+
+        givenCurrentTime();
+        givenUpcomingResourceBookings(
+                PageRequest.of(0, 20),
+                bookingForUser(userId, "2026-10-30T11:00:00Z", "2026-10-30T12:00:00Z", "First booking"),
+                bookingForUser(userId, "2026-10-30T13:00:00Z", "2026-10-30T14:00:00Z", "Second booking")
+        );
+        givenUserEmails(new UserEmailResponse(userId, "user@example.com"));
+
+        Page<BookingDetailsResponse> result = bookingService.getResourceBookings(
+                genericResourceId,
+                BookingPeriod.UPCOMING,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).itemName()).isEqualTo("user@example.com");
+        assertThat(result.getContent().get(1).itemName()).isEqualTo("user@example.com");
+
+        verify(userService, times(1)).getUserEmailById(List.of(userId));
+    }
+
+    @Test
+    void getResourceBookingsKeepsPageMetadata() {
+        UUID userId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(1, 2);
+
+        BookingEntity booking = bookingForUser(userId, "2026-10-30T11:00:00Z", "2026-10-30T12:00:00Z", "Booking");
+
+        givenCurrentTime();
+        when(bookingRepository.findAllByResourceIdAndEndTimeAfterOrderByStartTimeAsc(
+                genericResourceId,
+                fixedNow(),
+                pageable
+        )).thenReturn(new PageImpl<>(List.of(booking), pageable, 5));
+        givenUserEmails(new UserEmailResponse(userId, "user@example.com"));
+
+        Page<BookingDetailsResponse> result = bookingService.getResourceBookings(
+                genericResourceId,
                 BookingPeriod.UPCOMING,
                 pageable
         );
@@ -445,6 +563,22 @@ public class BookingServiceTest {
         )).thenReturn(new PageImpl<>(List.of(bookings), pageable, bookings.length));
     }
 
+    private void givenUpcomingResourceBookings(Pageable pageable, BookingEntity... bookings) {
+        when(bookingRepository.findAllByResourceIdAndEndTimeAfterOrderByStartTimeAsc(
+                genericResourceId,
+                fixedNow(),
+                pageable
+        )).thenReturn(new PageImpl<>(List.of(bookings), pageable, bookings.length));
+    }
+
+    private void givenPreviousResourceBookings(Pageable pageable, BookingEntity... bookings) {
+        when(bookingRepository.findAllByResourceIdAndEndTimeLessThanEqualOrderByEndTimeDesc(
+                genericResourceId,
+                fixedNow(),
+                pageable
+        )).thenReturn(new PageImpl<>(List.of(bookings), pageable, bookings.length));
+    }
+
     private void givenResourceNames(ResourceNameResponse... resources) {
         when(resourceService.getRequestedResourceNamesById(
                 Stream.of(resources)
@@ -454,15 +588,39 @@ public class BookingServiceTest {
         )).thenReturn(List.of(resources));
     }
 
+    private void givenUserEmails(UserEmailResponse... users) {
+        when(userService.getUserEmailById(
+                Stream.of(users)
+                        .map(UserEmailResponse::id)
+                        .distinct()
+                        .toList()
+        )).thenReturn(List.of(users));
+    }
+
     private static BookingEntity booking(
-            UUID resourceId,
+            UUID itemId,
             String startTime,
             String endTime,
             String description
     ) {
         return new BookingEntity(
-                resourceId,
+                itemId,
                 genericUserId,
+                Instant.parse(startTime),
+                Instant.parse(endTime),
+                description
+        );
+    }
+
+    private static BookingEntity bookingForUser(
+            UUID itemId,
+            String startTime,
+            String endTime,
+            String description
+    ) {
+        return new BookingEntity(
+                genericResourceId,
+                itemId,
                 Instant.parse(startTime),
                 Instant.parse(endTime),
                 description
@@ -471,12 +629,12 @@ public class BookingServiceTest {
 
     private static void assertBookingResponse(
             BookingDetailsResponse response,
-            UUID resourceId,
-            String resourceName,
+            UUID itemId,
+            String itemName,
             String description
     ) {
-        assertThat(response.resourceId()).isEqualTo(resourceId);
-        assertThat(response.resourceName()).isEqualTo(resourceName);
+        assertThat(response.itemId()).isEqualTo(itemId);
+        assertThat(response.itemName()).isEqualTo(itemName);
         assertThat(response.bookingDescription()).isEqualTo(description);
     }
 

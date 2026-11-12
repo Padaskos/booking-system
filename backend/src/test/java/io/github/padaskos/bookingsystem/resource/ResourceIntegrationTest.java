@@ -194,7 +194,7 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldReturn200_withAllInactiveResources() throws Exception {
+    void getResourcesInactive_shouldReturn200_withAllInactiveResources() throws Exception {
         ResourceEntity inactiveLaptop = inactiveResource(
                 new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)
         );
@@ -214,12 +214,12 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldReturn403_whenUserIsNotAdmin() throws Exception {
+    void getResourcesInactive_shouldReturn403_whenUserIsNotAdmin() throws Exception {
         getInactiveResourcesRequestAsUser(queryParams()).andExpect(status().isForbidden());
     }
 
     @Test
-    void getResourcesAdmin_shouldNotReturnActiveResources() throws Exception {
+    void getResourcesInactive_shouldNotReturnActiveResources() throws Exception {
         ResourceEntity inactiveLaptop = inactiveResource(
                 new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)
         );
@@ -237,7 +237,7 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldFilterInactiveResourcesByType() throws Exception {
+    void getResourcesInactive_shouldFilterInactiveResourcesByType() throws Exception {
         repository.saveAllAndFlush(List.of(
                 inactiveResource(new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
                 inactiveResource(new ResourceEntity("Inactive Camera", genericDescription, "Gent", ResourceType.CAMERA))
@@ -251,7 +251,7 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldFilterInactiveResourcesByName_caseInsensitive() throws Exception {
+    void getResourcesInactive_shouldFilterInactiveResourcesByName_caseInsensitive() throws Exception {
         repository.saveAllAndFlush(List.of(
                 inactiveResource(new ResourceEntity("Inactive Laptop A", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
                 inactiveResource(new ResourceEntity("Inactive Laptop B", genericDescription, "Gent", ResourceType.LAPTOP)),
@@ -266,7 +266,7 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldFilterInactiveResourcesByLocation() throws Exception {
+    void getResourcesInactive_shouldFilterInactiveResourcesByLocation() throws Exception {
         repository.saveAllAndFlush(List.of(
                 inactiveResource(new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
                 inactiveResource(new ResourceEntity("Inactive Camera", genericDescription, "Gent", ResourceType.CAMERA))
@@ -283,7 +283,7 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldFilterInactiveResourcesByNameAndType_combined() throws Exception {
+    void getResourcesInactive_shouldFilterInactiveResourcesByNameAndType_combined() throws Exception {
         repository.saveAllAndFlush(List.of(
                 inactiveResource(new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
                 inactiveResource(new ResourceEntity("Inactive Camera", genericDescription, "Gent", ResourceType.CAMERA))
@@ -297,7 +297,7 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldReturnEmpty_whenNoInactiveResourcesMatch() throws Exception {
+    void getResourcesInactive_shouldReturnEmpty_whenNoInactiveResourcesMatch() throws Exception {
         repository.saveAndFlush(
                 inactiveResource(new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP))
         );
@@ -309,7 +309,7 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldRespectPagination() throws Exception {
+    void getResourcesInactive_shouldRespectPagination() throws Exception {
         repository.saveAllAndFlush(List.of(
                 inactiveResource(new ResourceEntity("Inactive Laptop A", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
                 inactiveResource(new ResourceEntity("Inactive Laptop B", genericDescription, "Gent", ResourceType.LAPTOP)),
@@ -325,7 +325,7 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldSortInactiveResourcesByNameAscending() throws Exception {
+    void getResourcesInactive_shouldSortInactiveResourcesByNameAscending() throws Exception {
         repository.saveAllAndFlush(List.of(
                 inactiveResource(new ResourceEntity("Inactive Laptop B", genericDescription, "Gent", ResourceType.LAPTOP)),
                 inactiveResource(new ResourceEntity("Inactive Laptop A", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
@@ -341,7 +341,7 @@ class ResourceIntegrationTest {
     }
 
     @Test
-    void getResourcesAdmin_shouldSortInactiveResourcesByLocationDescending() throws Exception {
+    void getResourcesInactive_shouldSortInactiveResourcesByLocationDescending() throws Exception {
         repository.saveAllAndFlush(List.of(
                 inactiveResource(new ResourceEntity("Inactive Laptop A", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
                 inactiveResource(new ResourceEntity("Inactive Laptop B", genericDescription, "Gent", ResourceType.LAPTOP)),
@@ -358,7 +358,7 @@ class ResourceIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("invalidGetResourcesParams")
-    void getResourcesAdmin_shouldReturn400_whenParamsAreInvalid(String paramName, String paramValue) throws Exception {
+    void getResourcesInactive_shouldReturn400_whenParamsAreInvalid(String paramName, String paramValue) throws Exception {
         getInactiveResourcesRequest(queryParams(paramName, paramValue)).andExpect(status().isBadRequest());
     }
 
@@ -512,7 +512,7 @@ class ResourceIntegrationTest {
     }
 
     private ResultActions postResource(CreateResourceRequest request) throws Exception {
-        return mockMvc.perform(post("/api/resources")
+        return mockMvc.perform(post("/api/admin/resources")
                 .with(asAdmin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)));
@@ -547,7 +547,7 @@ class ResourceIntegrationTest {
     }
 
     private ResultActions getResourceByIdRequest(Object id) throws Exception {
-        return mockMvc.perform(get("/api/resources/{id}", id).with(asUser()));
+        return mockMvc.perform(get("/api/resource/{id}", id).with(asUser()));
     }
 
     private DetailedResourceResponse getResourceById(UUID id) throws Exception {
@@ -556,7 +556,7 @@ class ResourceIntegrationTest {
     }
 
     private ResultActions putResourceRequest(Object id, CreateResourceRequest request) throws Exception {
-        return mockMvc.perform(put("/api/resources/{id}", id)
+        return mockMvc.perform(put("/api/admin/resource/{id}", id)
                 .with(asAdmin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)));
@@ -568,7 +568,7 @@ class ResourceIntegrationTest {
     }
 
     private ResultActions patchStatusRequest(UUID id, Boolean active) throws Exception {
-        return mockMvc.perform(patch("/api/resources/{id}/status", id)
+        return mockMvc.perform(patch("/api/admin/resource/{id}/status", id)
                 .with(asAdmin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UpdateStatusRequest(active))));

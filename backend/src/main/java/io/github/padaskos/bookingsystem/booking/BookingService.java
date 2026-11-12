@@ -6,6 +6,8 @@ import io.github.padaskos.bookingsystem.resource.ResourceService;
 import io.github.padaskos.bookingsystem.resource.ResourceUnavailableException;
 import io.github.padaskos.bookingsystem.resource.dto.ResourceNameResponse;
 import io.github.padaskos.bookingsystem.user.UserRole;
+import io.github.padaskos.bookingsystem.user.UserService;
+import io.github.padaskos.bookingsystem.user.dto.UserEmailResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -23,11 +25,13 @@ public class BookingService {
     private final ResourceService resourceService;
     private final BookingRepository repository;
     private final Clock clock;
+    private final UserService userService;
 
-    BookingService(ResourceService resourceService, BookingRepository repository, Clock clock) {
+    BookingService(ResourceService resourceService, BookingRepository repository, Clock clock, UserService userService) {
         this.resourceService = resourceService;
         this.repository = repository;
         this.clock = clock;
+        this.userService = userService;
     }
 
     public void createBooking(UUID resourceId, UUID userId, Instant startTime, Instant endTime, String bookingDescription) {
@@ -84,6 +88,48 @@ public class BookingService {
                 booking.getId(),
                 booking.getResourceId(),
                 resourceNamesById.get(booking.getResourceId()),
+                booking.getStartTime(),
+                booking.getEndTime(),
+                booking.getBookingDescription()
+        ));
+    }
+
+    public Page<BookingDetailsResponse> getResourceBookings(UUID resourceId, BookingPeriod period, Pageable pageable) {
+        Instant currentTime = Instant.now(clock);
+
+        Page<BookingEntity> bookings = switch (period) {
+            case UPCOMING -> repository.findAllByResourceIdAndEndTimeAfterOrderByStartTimeAsc(
+                    resourceId,
+                    currentTime,
+                    pageable
+            );
+            case PREVIOUS -> repository.findAllByResourceIdAndEndTimeLessThanEqualOrderByEndTimeDesc(
+                    resourceId,
+                    currentTime,
+                    pageable
+            );
+        };
+
+        return enrichWithUserEmails(bookings);
+    }
+
+    private Page<BookingDetailsResponse> enrichWithUserEmails(Page<BookingEntity> bookings) {
+        List<UUID> userIds = bookings.getContent()
+                .stream()
+                .map(BookingEntity::getUserId)
+                .distinct()
+                .toList();
+
+        Map<UUID, String> userEmailsById = userService.getUserEmailById(userIds)
+                .stream().collect(Collectors.toMap(
+                        UserEmailResponse::id,
+                        UserEmailResponse::email
+                ));
+
+        return bookings.map(booking -> new BookingDetailsResponse(
+                booking.getId(),
+                booking.getUserId(),
+                userEmailsById.get(booking.getUserId()),
                 booking.getStartTime(),
                 booking.getEndTime(),
                 booking.getBookingDescription()

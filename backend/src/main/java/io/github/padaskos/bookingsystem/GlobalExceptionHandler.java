@@ -11,7 +11,6 @@ import io.github.padaskos.bookingsystem.user.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
@@ -33,22 +32,28 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UserNotAllowedException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
-    public void handleUserNotAllowed() {}
+    public ResponseEntity<String> handleUserNotAllowed(UserNotAllowedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
+    }
 
     @ExceptionHandler(BookingNotFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public void handleBookingNotFound() {}
+    public ResponseEntity<String> handleBookingNotFound(BookingNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
 
     @ExceptionHandler(ResourceUnavailableException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
-    public void handleResourceUnavailable() {}
+    public ResponseEntity<String> handleResourceUnavailable(ResourceUnavailableException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ex.getMessage());
+
+    }
 
     @ExceptionHandler(UserNotFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public void handleUserNotFound() {}
+    public ResponseEntity<String> handleUserNotFound(UserNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
 
     @ExceptionHandler(UnauthorizedCredentials.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public void handleUnauthorizedCredentials() {}
+    public ResponseEntity<String> handleUnauthorizedCredentials(UnauthorizedCredentials ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ex.getMessage());
+    }
 }

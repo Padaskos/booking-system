@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public record BookingDetailsResponse(
         UUID bookingId,
-        UUID resourceId,
-        String resourceName,
+        UUID itemId,
+        String itemName,
         Instant startTime,
         Instant endTime,
         String bookingDescription

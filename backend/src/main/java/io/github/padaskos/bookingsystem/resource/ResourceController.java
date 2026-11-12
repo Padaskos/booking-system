@@ -31,7 +31,7 @@ public class ResourceController {
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/resources")
+    @PostMapping("/admin/resources")
     @ResponseStatus(HttpStatus.CREATED)
     public void createResource(@Valid @RequestBody CreateResourceRequest request) {
         resourceService.createResource(request);
@@ -53,7 +53,7 @@ public class ResourceController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/resources/inactive")
-    public Page<ResourceResponse> getResourcesAdmin(
+    public Page<ResourceResponse> getResourcesInactive(
             @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable,
             @RequestParam(required = false) ResourceType type,
             @RequestParam(required = false) String name,
@@ -66,19 +66,19 @@ public class ResourceController {
                 .map(ResourceResponse::fromEntity);
     }
 
-    @GetMapping("/resources/{id}")
-    public DetailedResourceResponse getsResourceById(@PathVariable UUID id) {
+    @GetMapping("/resource/{id}")
+    public DetailedResourceResponse getResourceById(@PathVariable UUID id) {
         return DetailedResourceResponse.fromEntity(resourceService.getResourceById(id));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PutMapping("/resources/{id}")
+    @PutMapping("/admin/resource/{id}")
     public DetailedResourceResponse updateResource(@Valid @RequestBody CreateResourceRequest request, @PathVariable UUID id) {
         return DetailedResourceResponse.fromEntity(resourceService.updateResource(request, id));
     }
 
     @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/resources/{id}/status")
+    @PatchMapping("/admin/resource/{id}/status")
     public void updateResourceStatusById(@PathVariable UUID id, @Valid @RequestBody UpdateStatusRequest request) {
         resourceService.updateStatusById(id, request.status());
     }

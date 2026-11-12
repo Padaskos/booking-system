@@ -70,7 +70,6 @@ public class ResourceService {
                 request.location(),
                 request.type()
         );
-        repository.saveAndFlush(entity);
         return entity;
     }
 

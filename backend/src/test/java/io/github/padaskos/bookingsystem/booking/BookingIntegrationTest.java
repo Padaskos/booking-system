@@ -25,6 +25,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
@@ -173,7 +174,7 @@ class BookingIntegrationTest {
 
     @Test
     void createBooking_shouldReturn403_whenUserDoesNotExist() throws Exception {
-        mockMvc.perform(post("/booking")
+        mockMvc.perform(post("/api/booking")
                         .with(user("unknown@example.com").roles("USER"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createDto(
@@ -249,7 +250,7 @@ class BookingIntegrationTest {
 
     @Test
     void isTimeSlotAvailable_shouldReturn400_whenResourceIdIsMalformed() throws Exception {
-        mockMvc.perform(get("/booking/availability/{resourceId}", "not-a-uuid")
+        mockMvc.perform(get("/api/booking/availability/{resourceId}", "not-a-uuid")
                         .param("startTime",genericStartTime.toString())
                         .param("endTime",genericEndTime.toString())
                         .with(asUser()))
@@ -278,7 +279,7 @@ class BookingIntegrationTest {
 
     @Test
     void deleteBooking_shouldReturn400_whenBookingIdIsMalformed() throws Exception {
-        mockMvc.perform(delete("/booking/{bookingId}", "not-a-uuid")
+        mockMvc.perform(delete("/api/booking/{bookingId}", "not-a-uuid")
                         .with(asUser()))
                 .andExpect(status().isBadRequest());
     }
@@ -316,8 +317,8 @@ class BookingIntegrationTest {
         ObjectNode response = getMyBookings("UPCOMING", 0, 20);
 
         assertThat(response.get("content")).hasSize(1);
-        assertThat(response.get("content").get(0).get("resourceId").asString()).isEqualTo(resource.getId().toString());
-        assertThat(response.get("content").get(0).get("resourceName").asString()).isEqualTo(resource.getName());
+        assertThat(response.get("content").get(0).get("itemId").asString()).isEqualTo(resource.getId().toString());
+        assertThat(response.get("content").get(0).get("itemName").asString()).isEqualTo(resource.getName());
         assertThat(response.get("content").get(0).get("bookingDescription").asString())
                 .isEqualTo(genericBookingDescription);
         assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
@@ -338,8 +339,12 @@ class BookingIntegrationTest {
         ObjectNode response = getMyBookings("PREVIOUS", 0, 20);
 
         assertThat(response.get("content")).hasSize(1);
-        assertThat(response.get("content").get(0).get("resourceId").asString()).isEqualTo(resource.getId().toString());
-        assertThat(response.get("content").get(0).get("resourceName").asString()).isEqualTo(resource.getName());
+
+        JsonNode bookingResponse = response.get("content").get(0);
+
+        assertThat(response.get("content")).hasSize(1);
+        assertThat(response.get("content").get(0).get("itemId").asString()).isEqualTo(resource.getId().toString());
+        assertThat(response.get("content").get(0).get("itemName").asString()).isEqualTo(resource.getName());
         assertThat(response.get("content").get(0).get("bookingDescription").asString())
                 .isEqualTo(genericBookingDescription);
         assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
@@ -412,7 +417,7 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenPageIsNegative() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "UPCOMING")
                         .param("page", "-1")
                         .param("size", "20")
@@ -422,7 +427,7 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenSizeIsLessThanOne() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "UPCOMING")
                         .param("page", "0")
                         .param("size", "0")
@@ -432,7 +437,7 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenSizeIsGreaterThanOneHundred() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "UPCOMING")
                         .param("page", "0")
                         .param("size", "101")
@@ -442,7 +447,7 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenSortingIsRequested() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "UPCOMING")
                         .param("sort", "startTime,asc")
                         .with(asUser()))
@@ -451,16 +456,198 @@ class BookingIntegrationTest {
 
     @Test
     void getMyBookings_shouldReturn400_whenPeriodIsMissing() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .with(asUser()))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void getMyBookings_shouldReturn400_whenPeriodIsInvalid() throws Exception {
-        mockMvc.perform(get("/booking/me")
+        mockMvc.perform(get("/api/booking/me")
                         .param("period", "INVALID")
                         .with(asUser()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResourceBookings_shouldReturnUpcomingBookings_whenPeriodIsUpcoming() throws Exception {
+        BookingEntity booking = bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(300),
+                Instant.now().plusSeconds(600),
+                genericBookingDescription
+        ));
+
+        ObjectNode response = getResourceBookings(resource.getId(), "UPCOMING", 0, 20);
+
+        assertThat(response.get("content")).hasSize(1);
+        assertThat(response.get("content").get(0).get("itemId").asString()).isEqualTo(user.getId().toString());
+        assertThat(response.get("content").get(0).get("itemName").asString()).isEqualTo(user.getEmail());
+        assertThat(response.get("content").get(0).get("bookingDescription").asString())
+                .isEqualTo(genericBookingDescription);
+        assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
+        assertThat(response.get("content").get(0).get("endTime").asString()).isEqualTo(booking.getEndTime().toString());
+        assertThat(response.get("totalElements").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void getResourceBookings_shouldReturnPreviousBookings_whenPeriodIsPrevious() throws Exception {
+        BookingEntity booking = bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().minusSeconds(600),
+                Instant.now().minusSeconds(300),
+                genericBookingDescription
+        ));
+
+        ObjectNode response = getResourceBookings(resource.getId(), "PREVIOUS", 0, 20);
+
+        assertThat(response.get("content")).hasSize(1);
+        assertThat(response.get("content").get(0).get("itemId").asString()).isEqualTo(user.getId().toString());
+        assertThat(response.get("content").get(0).get("itemName").asString()).isEqualTo(user.getEmail());
+        assertThat(response.get("content").get(0).get("bookingDescription").asString())
+                .isEqualTo(genericBookingDescription);
+        assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
+        assertThat(response.get("content").get(0).get("endTime").asString()).isEqualTo(booking.getEndTime().toString());
+        assertThat(response.get("totalElements").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void getResourceBookings_shouldOnlyReturnBookingsForRequestedResource() throws Exception {
+        ResourceEntity otherResource = resourceRepository.saveAndFlush(new ResourceEntity(
+                "Other Resource",
+                genericDescription,
+                genericLocation,
+                genericResourceType
+        ));
+        bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(300),
+                Instant.now().plusSeconds(600),
+                genericBookingDescription
+        ));
+        bookingRepository.saveAndFlush(new BookingEntity(
+                otherResource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(900),
+                Instant.now().plusSeconds(1200),
+                "Other resource booking"
+        ));
+
+        ObjectNode response = getResourceBookings(resource.getId(), "UPCOMING", 0, 20);
+
+        assertThat(response.get("content")).hasSize(1);
+        assertThat(response.get("content").get(0).get("bookingDescription").asString())
+                .isEqualTo(genericBookingDescription);
+        assertThat(response.get("totalElements").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void getResourceBookings_shouldKeepPageMetadata() throws Exception {
+        bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(300),
+                Instant.now().plusSeconds(600),
+                "First booking"
+        ));
+        bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(900),
+                Instant.now().plusSeconds(1200),
+                "Second booking"
+        ));
+        bookingRepository.saveAndFlush(new BookingEntity(
+                resource.getId(),
+                user.getId(),
+                Instant.now().plusSeconds(1500),
+                Instant.now().plusSeconds(1800),
+                "Third booking"
+        ));
+
+        ObjectNode response = getResourceBookings(resource.getId(), "UPCOMING", 1, 2);
+
+        assertThat(response.get("content")).hasSize(1);
+        assertThat(response.get("totalElements").asInt()).isEqualTo(3);
+        assertThat(response.get("totalPages").asInt()).isEqualTo(2);
+        assertThat(response.get("number").asInt()).isEqualTo(1);
+        assertThat(response.get("size").asInt()).isEqualTo(2);
+    }
+
+    @Test
+    void getResourceBookings_shouldReturn403_whenUserIsNotAdmin() throws Exception {
+        mockMvc.perform(get("/api/booking/admin/{resourceId}/bookings", resource.getId())
+                        .param("period", "UPCOMING")
+                        .param("page", "0")
+                        .param("size", "20")
+                        .with(asUser()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getResourceBookings_shouldReturn400_whenResourceIdIsMalformed() throws Exception {
+        mockMvc.perform(get("/api/booking/admin/{resourceId}/bookings", "not-a-uuid")
+                        .param("period", "UPCOMING")
+                        .param("page", "0")
+                        .param("size", "20")
+                        .with(asAdmin()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResourceBookings_shouldReturn400_whenPageIsNegative() throws Exception {
+        mockMvc.perform(get("/api/booking/admin/{resourceId}/bookings", resource.getId())
+                        .param("period", "UPCOMING")
+                        .param("page", "-1")
+                        .param("size", "20")
+                        .with(asAdmin()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResourceBookings_shouldReturn400_whenSizeIsLessThanOne() throws Exception {
+        mockMvc.perform(get("/api/booking/admin/{resourceId}/bookings", resource.getId())
+                        .param("period", "UPCOMING")
+                        .param("page", "0")
+                        .param("size", "0")
+                        .with(asAdmin()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResourceBookings_shouldReturn400_whenSizeIsGreaterThanOneHundred() throws Exception {
+        mockMvc.perform(get("/api/booking/admin/{resourceId}/bookings", resource.getId())
+                        .param("period", "UPCOMING")
+                        .param("page", "0")
+                        .param("size", "101")
+                        .with(asAdmin()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResourceBookings_shouldReturn400_whenSortingIsRequested() throws Exception {
+        mockMvc.perform(get("/api/booking/admin/{resourceId}/bookings", resource.getId())
+                        .param("period", "UPCOMING")
+                        .param("sort", "startTime,asc")
+                        .with(asAdmin()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResourceBookings_shouldReturn400_whenPeriodIsMissing() throws Exception {
+        mockMvc.perform(get("/api/booking/admin/{resourceId}/bookings", resource.getId())
+                        .with(asAdmin()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getResourceBookings_shouldReturn400_whenPeriodIsInvalid() throws Exception {
+        mockMvc.perform(get("/api/booking/admin/{resourceId}/bookings", resource.getId())
+                        .param("period", "INVALID")
+                        .with(asAdmin()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -477,6 +664,10 @@ class BookingIntegrationTest {
 
     private static SecurityMockMvcRequestPostProcessors.UserRequestPostProcessor asUser() {
         return user(genericUserEmail).roles("USER");
+    }
+
+    private static SecurityMockMvcRequestPostProcessors.UserRequestPostProcessor asAdmin() {
+        return user("admin@example.com").roles("ADMIN");
     }
 
     private static ResourceEntity createResource() {
@@ -504,14 +695,14 @@ class BookingIntegrationTest {
     }
 
     private ResultActions postBookingRequest(CreateBookingRequest request) throws Exception {
-        return mockMvc.perform(post("/booking")
+        return mockMvc.perform(post("/api/booking")
                 .with(asUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)));
     }
 
     private ResultActions getAvailabilityRequest(UUID resourceId, Instant start, Instant end) throws Exception {
-        return mockMvc.perform(get("/booking/availability/{resourceId}", resourceId)
+        return mockMvc.perform(get("/api/booking/availability/{resourceId}", resourceId)
                 .param("startTime", start.toString())
                 .param("endTime", end.toString())
                 .with(asUser()));
@@ -526,7 +717,7 @@ class BookingIntegrationTest {
     }
 
     private ObjectNode getMyBookings(String period, int page, int size) throws Exception {
-        MvcResult result = mockMvc.perform(get("/booking/me")
+        MvcResult result = mockMvc.perform(get("/api/booking/me")
                         .param("period", period)
                         .param("page", String.valueOf(page))
                         .param("size", String.valueOf(size))
@@ -537,8 +728,20 @@ class BookingIntegrationTest {
         return (ObjectNode) objectMapper.readTree(result.getResponse().getContentAsString());
     }
 
+    private ObjectNode getResourceBookings(UUID resourceId, String period, int page, int size) throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/booking/admin/{resourceId}/bookings", resourceId)
+                        .param("period", period)
+                        .param("page", String.valueOf(page))
+                        .param("size", String.valueOf(size))
+                        .with(asAdmin()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return (ObjectNode) objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
     private ResultActions deleteBooking(UUID bookingId) throws Exception {
-        return mockMvc.perform(delete("/booking/{bookingId}", bookingId)
+        return mockMvc.perform(delete("/api/booking/{bookingId}", bookingId)
                 .with(asUser()));
     }
 }

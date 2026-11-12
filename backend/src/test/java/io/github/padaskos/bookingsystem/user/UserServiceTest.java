@@ -31,7 +31,7 @@ class UserServiceTest {
 
         userService.createUser("Paris", "paris@poab.be", "123password123");
 
-        verify(repository).save(any(UserEntity.class));
+        verify(repository).saveAndFlush(any(UserEntity.class));
     }
 
     @Test
@@ -60,7 +60,7 @@ class UserServiceTest {
         userService.createUser("Paris", "paris@poab.be", "123password123");
 
         ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
-        verify(repository).save(captor.capture());
+        verify(repository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getPasswordHash()).isEqualTo("hashed");
     }
 
@@ -72,7 +72,7 @@ class UserServiceTest {
         userService.createUser("Paris", "paris@poab.be", "123password123");
 
         ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
-        verify(repository).save(captor.capture());
+        verify(repository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getRole()).isEqualTo(UserRole.USER);
     }
 }
