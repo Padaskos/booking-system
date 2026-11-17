@@ -3,8 +3,9 @@ package io.github.padaskos.bookingsystem.booking;
 import io.github.padaskos.bookingsystem.auth.AuthService;
 import io.github.padaskos.bookingsystem.auth.dto.UserDetailsResponse;
 import io.github.padaskos.bookingsystem.booking.dto.AvailabilityResponse;
-import io.github.padaskos.bookingsystem.booking.dto.BookingDetailsResponse;
 import io.github.padaskos.bookingsystem.booking.dto.CreateBookingRequest;
+import io.github.padaskos.bookingsystem.booking.dto.ResourceBookingDetailsResponse;
+import io.github.padaskos.bookingsystem.booking.dto.UserBookingDetailsResponse;
 import io.github.padaskos.bookingsystem.helpers.PageableValidator;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -53,7 +54,7 @@ public class BookingController {
     }
 
     @GetMapping("/me")
-    public Page<BookingDetailsResponse> getMyBookings(
+    public Page<UserBookingDetailsResponse> getMyBookings(
             @RequestParam BookingPeriod period,
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Integer page,
@@ -72,7 +73,7 @@ public class BookingController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/{resourceId}/bookings")
-    public Page<BookingDetailsResponse> getResourceBookings(
+    public Page<ResourceBookingDetailsResponse> getResourceBookings(
             @RequestParam BookingPeriod period,
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Integer page,
@@ -90,8 +91,8 @@ public class BookingController {
 
     @DeleteMapping("/{bookingId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteBooking(@PathVariable UUID bookingId, Authentication authentication) {
+    public void cancelBooking(@PathVariable UUID bookingId, Authentication authentication) {
         UserDetailsResponse user = authService.getUserDetailsByEmail(authentication.getName());
-        service.deleteBooking(bookingId, user.id(), user.role());
+        service.cancelBooking(bookingId, user.id(), user.role());
     }
 }

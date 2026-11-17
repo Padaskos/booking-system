@@ -53,10 +53,26 @@ public class ResourceService {
                 .orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
-        public boolean isActive(UUID id) {
+    public boolean isActive(UUID id) {
         ResourceEntity entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
         return entity.isActive();
+    }
+
+    public void verifyExists(UUID id) {
+        if (!repository.existsById(id)) {
+            throw new ResourceNotFoundException(id);
+        }
+    }
+
+    @Transactional
+    public void lockAndVerifyActive(UUID id) {
+        ResourceEntity entity = repository.findWithLockingById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        if (!entity.isActive()) {
+            throw new ResourceUnavailableException(id);
+        }
     }
 
     @Transactional

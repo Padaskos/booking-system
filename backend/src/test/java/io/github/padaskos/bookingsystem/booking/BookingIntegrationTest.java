@@ -273,8 +273,8 @@ class BookingIntegrationTest {
     }
 
     @Test
-    void deleteBooking_shouldReturn404_whenBookingDoesNotExist() throws Exception {
-        deleteBooking(UUID.randomUUID()).andExpect(status().isNotFound());
+    void deleteBooking_shouldReturn204_whenBookingDoesNotExist() throws Exception {
+        deleteBooking(UUID.randomUUID()).andExpect(status().isNoContent());
     }
 
     @Test
@@ -317,8 +317,8 @@ class BookingIntegrationTest {
         ObjectNode response = getMyBookings("UPCOMING", 0, 20);
 
         assertThat(response.get("content")).hasSize(1);
-        assertThat(response.get("content").get(0).get("itemId").asString()).isEqualTo(resource.getId().toString());
-        assertThat(response.get("content").get(0).get("itemName").asString()).isEqualTo(resource.getName());
+        assertThat(response.get("content").get(0).get("resourceId").asString()).isEqualTo(resource.getId().toString());
+        assertThat(response.get("content").get(0).get("resourceName").asString()).isEqualTo(resource.getName());
         assertThat(response.get("content").get(0).get("bookingDescription").asString())
                 .isEqualTo(genericBookingDescription);
         assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
@@ -343,8 +343,8 @@ class BookingIntegrationTest {
         JsonNode bookingResponse = response.get("content").get(0);
 
         assertThat(response.get("content")).hasSize(1);
-        assertThat(response.get("content").get(0).get("itemId").asString()).isEqualTo(resource.getId().toString());
-        assertThat(response.get("content").get(0).get("itemName").asString()).isEqualTo(resource.getName());
+        assertThat(response.get("content").get(0).get("resourceId").asString()).isEqualTo(resource.getId().toString());
+        assertThat(response.get("content").get(0).get("resourceName").asString()).isEqualTo(resource.getName());
         assertThat(response.get("content").get(0).get("bookingDescription").asString())
                 .isEqualTo(genericBookingDescription);
         assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
@@ -482,8 +482,8 @@ class BookingIntegrationTest {
         ObjectNode response = getResourceBookings(resource.getId(), "UPCOMING", 0, 20);
 
         assertThat(response.get("content")).hasSize(1);
-        assertThat(response.get("content").get(0).get("itemId").asString()).isEqualTo(user.getId().toString());
-        assertThat(response.get("content").get(0).get("itemName").asString()).isEqualTo(user.getEmail());
+        assertThat(response.get("content").get(0).get("userId").asString()).isEqualTo(user.getId().toString());
+        assertThat(response.get("content").get(0).get("userEmail").asString()).isEqualTo(user.getEmail());
         assertThat(response.get("content").get(0).get("bookingDescription").asString())
                 .isEqualTo(genericBookingDescription);
         assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
@@ -504,8 +504,8 @@ class BookingIntegrationTest {
         ObjectNode response = getResourceBookings(resource.getId(), "PREVIOUS", 0, 20);
 
         assertThat(response.get("content")).hasSize(1);
-        assertThat(response.get("content").get(0).get("itemId").asString()).isEqualTo(user.getId().toString());
-        assertThat(response.get("content").get(0).get("itemName").asString()).isEqualTo(user.getEmail());
+        assertThat(response.get("content").get(0).get("userId").asString()).isEqualTo(user.getId().toString());
+        assertThat(response.get("content").get(0).get("userEmail").asString()).isEqualTo(user.getEmail());
         assertThat(response.get("content").get(0).get("bookingDescription").asString())
                 .isEqualTo(genericBookingDescription);
         assertThat(response.get("content").get(0).get("startTime").asString()).isEqualTo(booking.getStartTime().toString());
