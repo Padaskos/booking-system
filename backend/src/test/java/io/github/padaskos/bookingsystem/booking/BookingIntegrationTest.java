@@ -25,7 +25,6 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
@@ -339,8 +338,6 @@ class BookingIntegrationTest {
         ObjectNode response = getMyBookings("PREVIOUS", 0, 20);
 
         assertThat(response.get("content")).hasSize(1);
-
-        JsonNode bookingResponse = response.get("content").get(0);
 
         assertThat(response.get("content")).hasSize(1);
         assertThat(response.get("content").get(0).get("resourceId").asString()).isEqualTo(resource.getId().toString());

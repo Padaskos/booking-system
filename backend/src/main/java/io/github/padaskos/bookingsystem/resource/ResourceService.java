@@ -59,12 +59,6 @@ public class ResourceService {
         return entity.isActive();
     }
 
-    public void verifyExists(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new ResourceNotFoundException(id);
-        }
-    }
-
     @Transactional
     public void lockAndVerifyActive(UUID id) {
         ResourceEntity entity = repository.findWithLockingById(id)
