@@ -1,7 +1,13 @@
 package io.github.padaskos.bookingsystem.user;
 
 import io.github.padaskos.bookingsystem.auth.UnauthorizedCredentials;
+import io.github.padaskos.bookingsystem.user.dto.UserEmailResponse;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -17,15 +23,32 @@ public class UserService {
         this.passwordHasher = passwordHasher;
     }
 
+    @Transactional
     public void createUser(String name, String email, String password) {
-        if (repository.existsByEmailIgnoreCase(email))
-            throw new EmailAlreadyExistsConflict(email);
-        repository.save(new UserEntity(name, email, passwordHasher.encode(password)));
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+
+        if (repository.existsByEmailIgnoreCase(normalizedEmail)) {
+            throw new EmailAlreadyExistsConflict(normalizedEmail);
+        }
+
+        repository.saveAndFlush(new UserEntity(
+                name,
+                normalizedEmail,
+                passwordHasher.encode(password)
+        ));
     }
 
     public UserEntity getUserByEmail(String email) {
-        if (!repository.existsByEmailIgnoreCase(email))
-            throw new UnauthorizedCredentials();
-        return repository.getUserEntitiesByEmailIgnoreCase(email);
+        return repository.findByEmailIgnoreCase(email)
+                .orElseThrow(UnauthorizedCredentials::new);
+    }
+
+    public List<UserEmailResponse> getUserEmailById(List<UUID> userIds) {
+        return repository.findAllByIdIn(userIds)
+                .stream().map(user -> new UserEmailResponse(
+                        user.getId(),
+                        user.getEmail()
+                ))
+                .toList();
     }
 }

@@ -194,6 +194,175 @@ class ResourceIntegrationTest {
     }
 
     @Test
+    void getResourcesInactive_shouldReturn200_withAllInactiveResources() throws Exception {
+        ResourceEntity inactiveLaptop = inactiveResource(
+                new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)
+        );
+        ResourceEntity inactiveCamera = inactiveResource(
+                new ResourceEntity("Inactive Camera", genericDescription, "Gent", ResourceType.CAMERA)
+        );
+
+        repository.saveAllAndFlush(List.of(inactiveLaptop, inactiveCamera));
+
+        PageResponse<ResourceResponse> response = getInactiveResourcesPage(queryParams());
+
+        assertThat(response.content()).hasSize(2);
+        assertThat(response.totalElements()).isEqualTo(2);
+        assertThat(response.content())
+                .extracting(ResourceResponse::name)
+                .containsExactlyInAnyOrder("Inactive Laptop", "Inactive Camera");
+    }
+
+    @Test
+    void getResourcesInactive_shouldReturn403_whenUserIsNotAdmin() throws Exception {
+        getInactiveResourcesRequestAsUser(queryParams()).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getResourcesInactive_shouldNotReturnActiveResources() throws Exception {
+        ResourceEntity inactiveLaptop = inactiveResource(
+                new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)
+        );
+
+        repository.saveAndFlush(inactiveLaptop);
+
+        PageResponse<ResourceResponse> response = getInactiveResourcesPage(queryParams());
+
+        assertThat(response.content())
+                .extracting(ResourceResponse::name)
+                .containsOnly("Inactive Laptop");
+        assertThat(response.content())
+                .extracting(ResourceResponse::name)
+                .doesNotContain("Laptop A", "Laptop B", "Camera A");
+    }
+
+    @Test
+    void getResourcesInactive_shouldFilterInactiveResourcesByType() throws Exception {
+        repository.saveAllAndFlush(List.of(
+                inactiveResource(new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Camera", genericDescription, "Gent", ResourceType.CAMERA))
+        ));
+
+        PageResponse<ResourceResponse> response = getInactiveResourcesPage(queryParams("type", "LAPTOP"));
+
+        assertThat(response.content()).hasSize(1);
+        assertThat(response.content()).allMatch(resource -> resource.type() == ResourceType.LAPTOP);
+        assertThat(response.content()).extracting(ResourceResponse::name).containsOnly("Inactive Laptop");
+    }
+
+    @Test
+    void getResourcesInactive_shouldFilterInactiveResourcesByName_caseInsensitive() throws Exception {
+        repository.saveAllAndFlush(List.of(
+                inactiveResource(new ResourceEntity("Inactive Laptop A", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Laptop B", genericDescription, "Gent", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Camera A", genericDescription, "Brussel", ResourceType.CAMERA))
+        ));
+
+        PageResponse<ResourceResponse> response = getInactiveResourcesPage(queryParams("name", "laptop"));
+
+        assertThat(response.content())
+                .extracting(ResourceResponse::name)
+                .containsExactlyInAnyOrder("Inactive Laptop A", "Inactive Laptop B");
+    }
+
+    @Test
+    void getResourcesInactive_shouldFilterInactiveResourcesByLocation() throws Exception {
+        repository.saveAllAndFlush(List.of(
+                inactiveResource(new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Camera", genericDescription, "Gent", ResourceType.CAMERA))
+        ));
+
+        PageResponse<ResourceResponse> response = getInactiveResourcesPage(queryParams("location", "gent"));
+
+        assertThat(response.content())
+                .extracting(ResourceResponse::location)
+                .containsOnly("Gent");
+        assertThat(response.content())
+                .extracting(ResourceResponse::name)
+                .containsOnly("Inactive Camera");
+    }
+
+    @Test
+    void getResourcesInactive_shouldFilterInactiveResourcesByNameAndType_combined() throws Exception {
+        repository.saveAllAndFlush(List.of(
+                inactiveResource(new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Camera", genericDescription, "Gent", ResourceType.CAMERA))
+        ));
+
+        PageResponse<ResourceResponse> response =
+                getInactiveResourcesPage(queryParams("name", "Camera", "type", "CAMERA"));
+
+        assertThat(response.content()).extracting(ResourceResponse::name).containsOnly("Inactive Camera");
+        assertThat(response.content()).extracting(ResourceResponse::type).containsOnly(ResourceType.CAMERA);
+    }
+
+    @Test
+    void getResourcesInactive_shouldReturnEmpty_whenNoInactiveResourcesMatch() throws Exception {
+        repository.saveAndFlush(
+                inactiveResource(new ResourceEntity("Inactive Laptop", genericDescription, "Antwerpen", ResourceType.LAPTOP))
+        );
+
+        PageResponse<ResourceResponse> response = getInactiveResourcesPage(queryParams("name", "nonexistent"));
+
+        assertThat(response.content()).isEmpty();
+        assertThat(response.totalElements()).isZero();
+    }
+
+    @Test
+    void getResourcesInactive_shouldRespectPagination() throws Exception {
+        repository.saveAllAndFlush(List.of(
+                inactiveResource(new ResourceEntity("Inactive Laptop A", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Laptop B", genericDescription, "Gent", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Camera A", genericDescription, "Brussel", ResourceType.CAMERA))
+        ));
+
+        PageResponse<ResourceResponse> response =
+                getInactiveResourcesPage(queryParams("page", "0", "size", "2"));
+
+        assertThat(response.content()).hasSize(2);
+        assertThat(response.totalElements()).isEqualTo(3);
+        assertThat(response.totalPages()).isEqualTo(2);
+    }
+
+    @Test
+    void getResourcesInactive_shouldSortInactiveResourcesByNameAscending() throws Exception {
+        repository.saveAllAndFlush(List.of(
+                inactiveResource(new ResourceEntity("Inactive Laptop B", genericDescription, "Gent", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Laptop A", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Camera A", genericDescription, "Brussel", ResourceType.CAMERA))
+        ));
+
+        PageResponse<ResourceResponse> response =
+                getInactiveResourcesPage(queryParams("sort", "name,asc"));
+
+        assertThat(response.content())
+                .extracting(ResourceResponse::name)
+                .containsExactly("Inactive Camera A", "Inactive Laptop A", "Inactive Laptop B");
+    }
+
+    @Test
+    void getResourcesInactive_shouldSortInactiveResourcesByLocationDescending() throws Exception {
+        repository.saveAllAndFlush(List.of(
+                inactiveResource(new ResourceEntity("Inactive Laptop A", genericDescription, "Antwerpen", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Laptop B", genericDescription, "Gent", ResourceType.LAPTOP)),
+                inactiveResource(new ResourceEntity("Inactive Camera A", genericDescription, "Brussel", ResourceType.CAMERA))
+        ));
+
+        PageResponse<ResourceResponse> response =
+                getInactiveResourcesPage(queryParams("sort", "location,desc"));
+
+        assertThat(response.content())
+                .extracting(ResourceResponse::location)
+                .containsExactly("Gent", "Brussel", "Antwerpen");
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidGetResourcesParams")
+    void getResourcesInactive_shouldReturn400_whenParamsAreInvalid(String paramName, String paramValue) throws Exception {
+        getInactiveResourcesRequest(queryParams(paramName, paramValue)).andExpect(status().isBadRequest());
+    }
+
+    @Test
     void getResourceById_shouldReturnResource_whenResourceExists() throws Exception {
         ResourceEntity saved = repository.saveAndFlush(createResource());
 
@@ -343,7 +512,7 @@ class ResourceIntegrationTest {
     }
 
     private ResultActions postResource(CreateResourceRequest request) throws Exception {
-        return mockMvc.perform(post("/api/resources")
+        return mockMvc.perform(post("/api/admin/resources")
                 .with(asAdmin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)));
@@ -361,8 +530,24 @@ class ResourceIntegrationTest {
         );
     }
 
+    private ResultActions getInactiveResourcesRequest(MultiValueMap<String, String> params) throws Exception {
+        return mockMvc.perform(get("/api/resources/inactive").with(asAdmin()).params(params));
+    }
+
+    private ResultActions getInactiveResourcesRequestAsUser(MultiValueMap<String, String> params) throws Exception {
+        return mockMvc.perform(get("/api/resources/inactive").with(asUser()).params(params));
+    }
+
+    private PageResponse<ResourceResponse> getInactiveResourcesPage(MultiValueMap<String, String> params) throws Exception {
+        MvcResult result = getInactiveResourcesRequest(params).andExpect(status().isOk()).andReturn();
+        return objectMapper.readValue(
+                result.getResponse().getContentAsString(StandardCharsets.UTF_8),
+                new TypeReference<>() {}
+        );
+    }
+
     private ResultActions getResourceByIdRequest(Object id) throws Exception {
-        return mockMvc.perform(get("/api/resources/{id}", id).with(asUser()));
+        return mockMvc.perform(get("/api/resource/{id}", id).with(asUser()));
     }
 
     private DetailedResourceResponse getResourceById(UUID id) throws Exception {
@@ -371,7 +556,7 @@ class ResourceIntegrationTest {
     }
 
     private ResultActions putResourceRequest(Object id, CreateResourceRequest request) throws Exception {
-        return mockMvc.perform(put("/api/resources/{id}", id)
+        return mockMvc.perform(put("/api/admin/resource/{id}", id)
                 .with(asAdmin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)));
@@ -383,7 +568,7 @@ class ResourceIntegrationTest {
     }
 
     private ResultActions patchStatusRequest(UUID id, Boolean active) throws Exception {
-        return mockMvc.perform(patch("/api/resources/{id}/status", id)
+        return mockMvc.perform(patch("/api/admin/resource/{id}/status", id)
                 .with(asAdmin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(new UpdateStatusRequest(active))));

@@ -24,16 +24,28 @@ public class ResourceService {
     }
 
     @Transactional
-    public void createResource(CreateResourceRequest request) {
-        repository.save(new ResourceEntity(request.name(), request.description(), request.location(), request.type()));
+    public ResourceEntity createResource(CreateResourceRequest request) {
+        ResourceEntity entity = new ResourceEntity(request.name(), request.description(), request.location(), request.type());
+        repository.save(entity);
+        return entity;
     }
 
     public Page<ResourceEntity> getResources(Pageable pageable, ResourceType type, String name, String location) {
         Specification<ResourceEntity> spec = Specification
-                .where(ResourceSpecifications.isActive())
-                .and(ResourceSpecifications.nameLike(name))
+                .where(ResourceSpecifications.nameLike(name))
                 .and(ResourceSpecifications.hasType(type))
-                .and(ResourceSpecifications.locationLike(location));
+                .and(ResourceSpecifications.locationLike(location))
+                .and(ResourceSpecifications.isActive());
+
+        return repository.findAll(spec, pageable);
+    }
+
+    public Page<ResourceEntity> getResourcesInactive(Pageable pageable, ResourceType type, String name, String location) {
+        Specification<ResourceEntity> spec = Specification
+                .where(ResourceSpecifications.nameLike(name))
+                .and(ResourceSpecifications.hasType(type))
+                .and(ResourceSpecifications.locationLike(location))
+                .and(ResourceSpecifications.isInactive());
 
         return repository.findAll(spec, pageable);
     }
@@ -43,10 +55,20 @@ public class ResourceService {
                 .orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
-        public boolean isActive(UUID id) {
+    public boolean isActive(UUID id) {
         ResourceEntity entity = repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
         return entity.isActive();
+    }
+
+    @Transactional
+    public void lockAndVerifyActive(UUID id) {
+        ResourceEntity entity = repository.findWithLockingById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(id));
+
+        if (!entity.isActive()) {
+            throw new ResourceUnavailableException(id);
+        }
     }
 
     @Transactional
@@ -60,7 +82,6 @@ public class ResourceService {
                 request.location(),
                 request.type()
         );
-        repository.saveAndFlush(entity);
         return entity;
     }
 

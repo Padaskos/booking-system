@@ -27,7 +27,7 @@ The system should:
 - Allow users to make and manage reservations.
 - Allow administrators to manage the available resources.
 - Prevent conflicting reservations.
-- Preserve relevant resource and booking history.
+- Preserve previous completed bookings.
 
 ---
 
@@ -46,7 +46,7 @@ An administrator is also a user but has additional permissions.
 ### Administrator
 
 A user responsible for managing resources and their availability. \
-An administrator can register, update, activate, deactivate, and block resources for maintenance.
+An administrator can register, update, activate and deactivate resources.
 
 ### Resource
 
@@ -60,12 +60,8 @@ A resource can be active or inactive:
 ### Booking
 
 A reservation connecting a user to a resource for a specific period.\
-A booking may be active or cancelled.
-
-### Maintenance period
-
-A period during which a resource is intentionally unavailable,\
-for example because it is being repaired or inspected.
+Previous completed bookings remain available as history.\
+When a booking is cancelled, it is removed from the system.
 
 ### Availability
 
@@ -73,7 +69,6 @@ A resource is available when:
 
 - It is active.
 - It is not already booked during the requested period.
-- It is not blocked for maintenance during the requested period.
 
 ---
 
@@ -118,9 +113,7 @@ Required for the minimum usable implementation:
 
 Important, but not required for the first usable version:
 
-- Maintenance periods for resources
 - Filtering and sorting larger lists
-- Preserving cancelled bookings as history
 
 ### Could have
 
@@ -184,22 +177,15 @@ A resource is unavailable when it is:
 
 - Inactive
 - Already booked during an overlapping period
-- Blocked for maintenance
 
 Periods that only touch at their start or end do not conflict.\
 For example, a booking ending at 12:00 does not conflict with another booking starting at 12:00.
 
 ## 6.4 Bookings
 
-An authenticated user can reserve an available resource for a future period.\
-A user can view and cancel their own bookings. Cancelling a booking makes the period available again.\
-Bookings are retained so that their history is not lost.
-
-## 6.5 Maintenance
-
-Administrators can block a resource during maintenance.\
-A maintenance period cannot conflict with an existing active booking.\
-Users cannot make bookings that overlap maintenance.
+An authenticated user can reserve an available resource for a future period. \
+A user can view and cancel their own bookings. Cancelling a booking removes it and makes the period available again.\
+Bookings that have already taken place remain available as history.
 
 ---
 
@@ -398,7 +384,7 @@ so that I know whether I can reserve it.
 - The user provides a valid future period.
 - The result clearly indicates whether the resource is available.
 - Inactive resources are unavailable.
-- Existing bookings and maintenance periods affect availability.
+- Existing bookings affect availability.
 - The user is informed when the resource does not exist.
 
 ---
@@ -458,29 +444,49 @@ so that the resource becomes available to others.
 
 ---
 
-## Resource maintenance
+## Administrative overview
 
-### US-013 — Plan resource maintenance
+### US-013 — View bookings for a resource
 
-**Priority:** Should have
+**Priority:** Must have
 
 **As an administrator,**  
-I want to make a resource unavailable during maintenance,  
-so that it cannot be reserved during that period.
+I want to view the bookings of a resource  
+so that I can manage its schedule and reservations.
 
 #### Acceptance criteria
 
-- The administrator provides a future period and a reason.
-- The maintenance period must have a valid start and end.
-- The period cannot conflict with an existing active booking.
-- Users cannot make bookings that overlap maintenance.
-- The administrator is informed when the resource does not exist or the period conflicts.
+- The administrator can select a resource and view its bookings.
+- Booking information includes the period, purpose, and user who made the booking.
+- Upcoming and previous bookings can be distinguished.
+- Upcoming bookings are shown chronologically.
+- Resources without bookings show an empty overview.
+- Regular users cannot access this overview.
+
+---
+
+### US-014 — View all resources by status
+
+**Priority:** Must have
+
+**As an administrator,**  
+I want to view both active and inactive resources,  
+so that I can manage and reactivate unavailable resources.
+
+#### Acceptance criteria
+
+- The administrator can view all resources regardless of their status.
+- Active and inactive resources can be distinguished.
+- Resources can be filtered by status.
+- An inactive resource can be selected and reactivated.
+- Regular users continue to see only active resources.
+- An empty result is displayed without causing an error.
 
 ---
 
 ## Booking reliability
 
-### US-014 — Prevent simultaneous conflicting bookings
+### US-015 — Prevent simultaneous conflicting bookings
 
 **Priority:** Must have
 
@@ -494,8 +500,6 @@ so that another user cannot reserve the same resource for the same period.
 - One valid reservation may succeed while the conflicting reservation is rejected.
 - Non-overlapping reservations remain possible.
 - The confirmed booking remains correctly stored.
-
----
 
 # 9. Future changes
 

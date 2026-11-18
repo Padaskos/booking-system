@@ -21,4 +21,16 @@ public interface BookingRepository extends JpaRepository<BookingEntity, UUID> {
             Instant currentTime,
             Pageable pageable
     );
+
+    Page<BookingEntity> findAllByResourceIdAndEndTimeAfterOrderByStartTimeAsc(
+            UUID userId,
+            Instant currentTime,
+            Pageable pageable
+    );
+
+    Page<BookingEntity> findAllByResourceIdAndEndTimeLessThanEqualOrderByEndTimeDesc(
+            UUID userId,
+            Instant currentTime,
+            Pageable pageable
+    );
 }
