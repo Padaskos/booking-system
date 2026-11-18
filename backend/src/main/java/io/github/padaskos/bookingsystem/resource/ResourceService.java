@@ -24,8 +24,10 @@ public class ResourceService {
     }
 
     @Transactional
-    public void createResource(CreateResourceRequest request) {
-        repository.save(new ResourceEntity(request.name(), request.description(), request.location(), request.type()));
+    public ResourceEntity createResource(CreateResourceRequest request) {
+        ResourceEntity entity = new ResourceEntity(request.name(), request.description(), request.location(), request.type());
+        repository.save(entity);
+        return entity;
     }
 
     public Page<ResourceEntity> getResources(Pageable pageable, ResourceType type, String name, String location) {

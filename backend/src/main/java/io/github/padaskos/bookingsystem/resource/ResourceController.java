@@ -33,8 +33,8 @@ public class ResourceController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/admin/resources")
     @ResponseStatus(HttpStatus.CREATED)
-    public void createResource(@Valid @RequestBody CreateResourceRequest request) {
-        resourceService.createResource(request);
+    public DetailedResourceResponse createResource(@Valid @RequestBody CreateResourceRequest request) {
+        return DetailedResourceResponse.fromEntity(resourceService.createResource(request));
     }
 
     @GetMapping("/resources")
