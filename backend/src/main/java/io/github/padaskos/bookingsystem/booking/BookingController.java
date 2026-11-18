@@ -3,14 +3,16 @@ package io.github.padaskos.bookingsystem.booking;
 import io.github.padaskos.bookingsystem.auth.AuthService;
 import io.github.padaskos.bookingsystem.auth.dto.UserDetailsResponse;
 import io.github.padaskos.bookingsystem.booking.dto.AvailabilityResponse;
-import io.github.padaskos.bookingsystem.booking.dto.BookingDetailsResponse;
 import io.github.padaskos.bookingsystem.booking.dto.CreateBookingRequest;
+import io.github.padaskos.bookingsystem.booking.dto.ResourceBookingDetailsResponse;
+import io.github.padaskos.bookingsystem.booking.dto.UserBookingDetailsResponse;
 import io.github.padaskos.bookingsystem.helpers.PageableValidator;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,7 +54,7 @@ public class BookingController {
     }
 
     @GetMapping("/me")
-    public Page<BookingDetailsResponse> getMyBookings(
+    public Page<UserBookingDetailsResponse> getMyBookings(
             @RequestParam BookingPeriod period,
             @PageableDefault(size = 20) Pageable pageable,
             @RequestParam(required = false) Integer page,
@@ -64,14 +66,33 @@ public class BookingController {
                 page,
                 size,
                 "Sorting is not supported for personal bookings. Ordering is determined by the selected period."
-        );        UserDetailsResponse user = authService.getUserDetailsByEmail(authentication.getName());
+        );
+        UserDetailsResponse user = authService.getUserDetailsByEmail(authentication.getName());
         return service.getMyBookings(user.id(), period, pageable);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/{resourceId}/bookings")
+    public Page<ResourceBookingDetailsResponse> getResourceBookings(
+            @RequestParam BookingPeriod period,
+            @PageableDefault(size = 20) Pageable pageable,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @PathVariable UUID resourceId
+    ) {
+        PageableValidator.validateWithoutSorting(
+                pageable,
+                page,
+                size,
+                "Sorting is not supported for view resource bookings. Ordering is determined by the selected period."
+        );
+        return service.getResourceBookings(resourceId, period, pageable);
     }
 
     @DeleteMapping("/{bookingId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteBooking(@PathVariable UUID bookingId, Authentication authentication) {
+    public void cancelBooking(@PathVariable UUID bookingId, Authentication authentication) {
         UserDetailsResponse user = authService.getUserDetailsByEmail(authentication.getName());
-        service.deleteBooking(bookingId, user.id(), user.role());
+        service.cancelBooking(bookingId, user.id(), user.role());
     }
 }

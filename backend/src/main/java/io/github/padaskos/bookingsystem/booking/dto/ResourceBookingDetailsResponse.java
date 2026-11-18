@@ -3,10 +3,10 @@ package io.github.padaskos.bookingsystem.booking.dto;
 import java.time.Instant;
 import java.util.UUID;
 
-public record BookingDetailsResponse(
+public record ResourceBookingDetailsResponse(
         UUID bookingId,
-        UUID resourceId,
-        String resourceName,
+        UUID userId,
+        String userEmail,
         Instant startTime,
         Instant endTime,
         String bookingDescription

@@ -2,15 +2,21 @@ package io.github.padaskos.bookingsystem.resource;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.Locale;
+
 public class ResourceSpecifications {
     public static Specification<ResourceEntity> isActive() {
         return (root, query, cb) -> cb.isTrue(root.get("isActive"));
     }
 
+    public static Specification<ResourceEntity> isInactive() {
+        return (root, query, cb) -> cb.isFalse(root.get("isActive"));
+    }
+
     public static Specification<ResourceEntity> nameLike(String name) {
         return (root, query, cb) -> {
             if (name == null || name.isBlank()) return null;
-            return cb.like(cb.lower(root.get("name")), "%" + name.toLowerCase() + "%");
+            return cb.like(cb.lower(root.get("name")), "%" + name.toLowerCase(Locale.ROOT) + "%");
         };
     }
 
@@ -24,7 +30,7 @@ public class ResourceSpecifications {
     public static Specification<ResourceEntity> locationLike(String location) {
         return ( root, query, cb) -> {
             if (location == null || location.isBlank()) return null;
-            return cb.like(cb.lower(root.get("location")), "%" + location.toLowerCase() + "%");
+            return cb.like(cb.lower(root.get("location")), "%" + location.toLowerCase(Locale.ROOT) + "%");
         };
     }
 }
